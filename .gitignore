@@ -1,0 +1,5 @@
+/target
+.*.env
+config.lua
+!/scripts
+scripts/*.lua
