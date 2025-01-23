@@ -142,8 +142,11 @@ impl Manifest {
         github: github::Client,
         helix: helix::Client,
         spotify: spotify::Client,
-        emote_map: helix::EmoteMap,
     ) -> mlua::Result<Self> {
+        // FIXME initialize should let things register globals themselves
+        let emote_map = helix::EmoteMap::fetch_emotes(&helix) //
+            .expect("TODO this should be built elsewhere");
+
         lua.globals().set("log", crate::logger::Logger)?;
 
         // this is an enum, but it somehow still works
@@ -166,6 +169,7 @@ impl Manifest {
         lua.globals().set("github", github)?;
         lua.globals().set("spotify", spotify)?;
         lua.globals().set("helix", helix)?;
+
         lua.globals().set("emotes", emote_map)?;
 
         lua.globals().set("bot", crate::bot::Bot::new(reroute))?;
@@ -220,6 +224,7 @@ impl Manifest {
         }
     }
 
+    // FIXME this should be different
     pub fn set_responder(lua: &mlua::Lua, responder: impl Responder + 'static) -> mlua::Result<()> {
         lua.globals().set(
             "_RESPONDER",

@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::irc::{Message, Response};
 
+// TODO is this abstraction needed?
 pub trait Responder {
     fn send(&self, response: Response);
     fn reply(&self, msg: &Message, data: String) {

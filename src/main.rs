@@ -1,10 +1,6 @@
 use yomi::{
-    config::Config,
-    github, helix, irc,
-    manifest::Manifest,
-    responder::{Responder, ResponderChannel},
-    spotify,
-    watcher::Watcher,
+    irc, Config, GithubClient, HelixClient, Manifest, Responder, ResponderChannel, SpotifyClient,
+    Watcher,
 };
 
 enum Next {
@@ -67,11 +63,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let data = Manifest::read_init_lua(config.paths.scripts.join("init.lua"))?;
     Manifest::set_responder(&lua, responder.clone())?;
 
-    let oauth = helix::OAuth::create(&config.twitch.client_id, &config.twitch.client_secret)?;
-    let helix = helix::Client::new(oauth);
-    let emote_map = helix::EmoteMap::fetch_emotes(&helix)?;
-    let github = github::Client::new(&config.github.oauth_token);
-    let spotify = spotify::Client::new(
+    let helix = HelixClient::new(&config.twitch.client_id, &config.twitch.client_secret)?;
+    let github = GithubClient::new(&config.github.oauth_token);
+    let spotify = SpotifyClient::new(
         &config.spotify.client_id,
         &*config.spotify.client_secret,
         &*config.spotify.refresh_token,
@@ -87,7 +81,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         github,
         helix,
         spotify,
-        emote_map,
     )?;
 
     let mut our_user = irc::User::default();

@@ -23,11 +23,12 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new(oauth: OAuth) -> Self {
-        Self::new_with_ep(Option::<String>::None, oauth)
+    pub fn new(client_id: &str, client_secret: &str) -> Result<Self, Error> {
+        let oauth = OAuth::create(client_id, client_secret)?;
+        Ok(Self::new_with_ep(Option::<String>::None, oauth))
     }
 
-    pub fn new_with_ep(ep: impl Into<Option<String>>, oauth: OAuth) -> Self {
+    fn new_with_ep(ep: impl Into<Option<String>>, oauth: OAuth) -> Self {
         let mut agent = attohttpc::Session::new();
         agent.header_append("user-agent", crate::USER_AGENT);
 
@@ -111,11 +112,11 @@ impl UserData for Client {
 }
 
 #[derive(Clone, Debug, Default, serde::Deserialize)]
-pub struct OAuth {
-    pub access_token: String,
-    pub refresh_token: Option<String>,
-    pub expires_in: u64,
-    pub token_type: String,
+struct OAuth {
+    access_token: String,
+    refresh_token: Option<String>,
+    expires_in: u64,
+    token_type: String,
 
     #[serde(default)]
     client_id: String,
@@ -125,7 +126,7 @@ pub struct OAuth {
 }
 
 impl OAuth {
-    pub fn create(client_id: &str, client_secret: &str) -> Result<Self, Error> {
+    fn create(client_id: &str, client_secret: &str) -> Result<Self, Error> {
         if client_id.is_empty() {
             return Err(Error::EmptyClientId);
         }
@@ -148,7 +149,7 @@ impl OAuth {
         })?)
     }
 
-    pub fn with_client_credentials(client_id: &str, bearer_token: &str) -> Self {
+    fn with_client_credentials(client_id: &str, bearer_token: &str) -> Self {
         Self {
             client_id: client_id.to_string(),
             bearer_token: bearer_token.to_string(),
@@ -156,11 +157,11 @@ impl OAuth {
         }
     }
 
-    pub fn get_client_id(&self) -> &str {
+    fn get_client_id(&self) -> &str {
         &self.client_id
     }
 
-    pub fn get_bearer_token(&self) -> &str {
+    fn get_bearer_token(&self) -> &str {
         &self.bearer_token
     }
 }
