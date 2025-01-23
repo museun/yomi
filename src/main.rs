@@ -25,10 +25,10 @@ fn handle_fs_event(
     match Manifest::read_init_lua(&manifest.init) {
         Ok(data) => {
             if let Err(err) = manifest.load(lua, &data) {
-                eprintln!("{err}");
+                log::error!("{err}");
             }
         }
-        Err(err) => eprintln!("cannot read init.lua: {err}"),
+        Err(err) => log::error!("cannot read init.lua: {err}"),
     }
 
     Next::Continue
