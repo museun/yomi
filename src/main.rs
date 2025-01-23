@@ -1,9 +1,10 @@
-// #![cfg_attr(debug_assertions, allow(dead_code, unused_variables,))]
-
 use yomi::{
-    irc::User,
+    config::Config,
+    github, helix, irc,
+    manifest::Manifest,
     responder::{Responder, ResponderChannel},
-    *,
+    spotify,
+    watcher::Watcher,
 };
 
 enum Next {
@@ -89,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         emote_map,
     )?;
 
-    let mut our_user = User::default();
+    let mut our_user = irc::User::default();
 
     loop {
         let next = flume::Selector::new()

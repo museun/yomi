@@ -144,7 +144,7 @@ impl Manifest {
         spotify: spotify::Client,
         emote_map: helix::EmoteMap,
     ) -> mlua::Result<Self> {
-        lua.globals().set("log", crate::Logger)?;
+        lua.globals().set("log", crate::logger::Logger)?;
 
         // this is an enum, but it somehow still works
         lua.globals().set("Handled", Handled::Sink)?;
