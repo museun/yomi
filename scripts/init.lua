@@ -10,7 +10,6 @@ return {
         ["answers"] = require("answers"),
         ["spotify"] = require("spotify"),
         ["aliases"] = require("aliases"),
-
     },
     listeners = {
         require("another_viewer"),

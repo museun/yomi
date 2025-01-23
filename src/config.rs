@@ -205,8 +205,8 @@ impl Config {
         });
 
         if config.twitch.channels.is_empty() {
-            errors.push(format!(
-                "a channel must be provided for twitch.channels = {{}}"
+            errors.push(String::from(
+                "a channel must be provided for twitch.channels = {{}}",
             ));
         }
 

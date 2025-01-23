@@ -80,11 +80,12 @@ impl IntoLua for &Message {
             lua.create_function({
                 let responder = responder.clone();
                 move |_lua, (this, data): (Message, String)| {
-                    Ok(responder.send(Response::Reply {
+                    responder.send(Response::Reply {
                         channel: this.channel.to_string(),
                         msg_id: this.msg_id.to_string(),
                         data,
-                    }))
+                    });
+                    Ok(())
                 }
             })?,
         )?;
@@ -94,10 +95,11 @@ impl IntoLua for &Message {
             lua.create_function({
                 let responder = responder.clone();
                 move |_lua, (this, data): (Message, String)| {
-                    Ok(responder.send(Response::Say {
+                    responder.send(Response::Say {
                         channel: this.channel.to_string(),
                         data,
-                    }))
+                    });
+                    Ok(())
                 }
             })?,
         )?;
@@ -187,7 +189,7 @@ fn send(events: &flume::Sender<Event>, event: Event) -> bool {
 
 async fn maybe_reconnect(events: &flume::Sender<Event>, msg: std::fmt::Arguments<'_>) -> Next {
     log::warn!("{msg}");
-    if !send(&events, Event::Disconnected {}) {
+    if !send(events, Event::Disconnected {}) {
         return Next::Stop;
     }
     tokio::time::sleep(std::time::Duration::from_secs(5)).await;
@@ -203,7 +205,7 @@ async fn connect_to_twitch(
         Ok(stream) => stream,
         Err(err) => {
             return maybe_reconnect(
-                &events,
+                events,
                 format_args!("cannot connect, trying again because: {err}"),
             )
             .await;
@@ -225,7 +227,7 @@ async fn connect_to_twitch(
         ALL_CAPABILITIES,
     );
 
-    match encode_to(msg, &mut write, &events).await {
+    match encode_to(msg, &mut write, events).await {
         Next::Nothing => {}
         next => return next,
     }
@@ -239,17 +241,17 @@ async fn connect_to_twitch(
         let data = match lines.next_line().await {
             Ok(Some(data)) => data,
             Ok(None) => {
-                return maybe_reconnect(&events, format_args!("read an unexpected eof")).await
+                return maybe_reconnect(events, format_args!("read an unexpected eof")).await
             }
             Err(err) => {
-                return maybe_reconnect(&events, format_args!("cannot read line: {err}")).await
+                return maybe_reconnect(events, format_args!("cannot read line: {err}")).await
             }
         };
 
         for msg in twitch_message::parse_many(&data).flatten() {
             pt.update(&msg);
             if let Some(msg) = pt.should_pong() {
-                match encode_to(msg, &mut write, &events).await {
+                match encode_to(msg, &mut write, events).await {
                     Next::Nothing => {}
                     next => return next,
                 }
@@ -274,11 +276,11 @@ async fn connect_to_twitch(
         }
     }
 
-    let next = main_loop(user, &events, &response, lines, &mut write).await;
+    let next = main_loop(user, events, response, lines, &mut write).await;
 
     log::info!("sending quit message");
     let quit = encode::quit("bye");
-    let _ = encode_to(quit, &mut write, &events).await;
+    let _ = encode_to(quit, &mut write, events).await;
     next
 }
 
@@ -291,7 +293,7 @@ async fn main_loop(
 ) -> Next {
     log::info!("connected to Twitch: {user:#?}");
 
-    if !send(&events, Event::Connected { user: user.clone() }) {
+    if !send(events, Event::Connected { user: user.clone() }) {
         return Next::Stop;
     }
 
@@ -308,18 +310,18 @@ async fn main_loop(
 
         let msg = match select2(&mut read_line, &mut next_response).await {
             Either::Left(Err(err)) => {
-                return maybe_reconnect(&events, format_args!("cannot read: {err}")).await;
+                return maybe_reconnect(events, format_args!("cannot read: {err}")).await;
             }
 
             Either::Left(Ok(None)) => {
-                return maybe_reconnect(&events, format_args!("unexpected EOF")).await;
+                return maybe_reconnect(events, format_args!("unexpected EOF")).await;
             }
 
             Either::Left(Ok(Some(data))) => {
                 for msg in twitch_message::parse_many(&data).flatten() {
                     pt.update(&msg);
                     if let Some(msg) = pt.should_pong() {
-                        match encode_to(msg, &mut write, &events).await {
+                        match encode_to(msg, &mut write, events).await {
                             Next::Nothing => {}
                             next => return next,
                         }
@@ -328,7 +330,7 @@ async fn main_loop(
                     match msg.as_enum() {
                         TwitchMessage::Reconnect(..) => {
                             return maybe_reconnect(
-                                &events,
+                                events,
                                 format_args!("cannot read, server asked us to reconnect"),
                             )
                             .await
@@ -339,7 +341,7 @@ async fn main_loop(
                             let event = Event::Message {
                                 msg: privmsg.into_static(),
                             };
-                            if !send(&events, event) {
+                            if !send(events, event) {
                                 return Next::Stop;
                             }
                         }
@@ -356,7 +358,7 @@ async fn main_loop(
         match msg {
             Response::Join { channel } => {
                 let msg = encode::join(&channel);
-                match encode_to(msg, &mut write, &events).await {
+                match encode_to(msg, &mut write, events).await {
                     Next::Nothing => {}
                     next => return next,
                 }
@@ -365,7 +367,7 @@ async fn main_loop(
             Response::Error { channel, data } => {
                 let data = format!("error: {data}");
                 let msg = encode::privmsg(&channel, &data);
-                match encode_to(msg, &mut write, &events).await {
+                match encode_to(msg, &mut write, events).await {
                     Next::Nothing => {}
                     next => return next,
                 }
@@ -376,8 +378,8 @@ async fn main_loop(
                 msg_id,
                 data,
             } => {
-                let msg = encode::reply(&MsgIdRef::from_str(&msg_id), &channel, &data);
-                match encode_to(msg, &mut write, &events).await {
+                let msg = encode::reply(MsgIdRef::from_str(&msg_id), &channel, &data);
+                match encode_to(msg, &mut write, events).await {
                     Next::Nothing => {}
                     next => return next,
                 }
@@ -385,14 +387,14 @@ async fn main_loop(
 
             Response::Say { channel, data } => {
                 let msg = encode::privmsg(&channel, &data);
-                match encode_to(msg, &mut write, &events).await {
+                match encode_to(msg, &mut write, events).await {
                     Next::Nothing => {}
                     next => return next,
                 }
             }
 
             Response::Disconnect => {
-                return maybe_reconnect(&events, format_args!("user requested to reconnect")).await
+                return maybe_reconnect(events, format_args!("user requested to reconnect")).await
             }
         }
     }

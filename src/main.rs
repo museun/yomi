@@ -23,7 +23,7 @@ fn handle_fs_event(
     }
     match Manifest::read_init_lua(&manifest.init) {
         Ok(data) => {
-            if let Err(err) = manifest.load(&lua, &data) {
+            if let Err(err) = manifest.load(lua, &data) {
                 eprintln!("{err}");
             }
         }

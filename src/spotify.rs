@@ -109,7 +109,7 @@ impl<'a, T, const N: usize> IntoIterator for &'a Queue<T, N> {
     type Item = &'a T;
     type IntoIter = std::collections::vec_deque::Iter<'a, T>;
     fn into_iter(self) -> Self::IntoIter {
-        (&self.inner).into_iter()
+        self.inner.iter()
     }
 }
 
@@ -250,7 +250,7 @@ impl Client {
         let resp = self.send(|s| {
             s.post("https://api.spotify.com/v1/me/player/queue")
                 .header(attohttpc::header::CONTENT_LENGTH, 0)
-                .param("uri", &format!("spotify:track:{}", urn.0))
+                .param("uri", format!("spotify:track:{}", urn.0))
         })?;
 
         Ok(matches!(

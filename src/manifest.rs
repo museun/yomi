@@ -62,7 +62,7 @@ impl Mapping {
                 return;
             }
 
-            Some(pat) => match pat.extract(&data) {
+            Some(pat) => match pat.extract(data) {
                 Extract::NoMatch => {
                     responder.reply(msg, self.make_error());
                     return;
@@ -83,11 +83,9 @@ impl Mapping {
         };
 
         if let Some(err) = err.to_string().lines().nth(0).and_then(|c| {
-            c.split_terminator(": ")
-                .skip_while(|c| {
-                    c.contains("runtime error") || c.contains("./scripts") || c.contains("src")
-                })
-                .next()
+            c.split_terminator(": ").find(|c| {
+                !(c.contains("runtime error") || c.contains("./scripts") || c.contains("src"))
+            })
         }) {
             responder.error(msg, err.to_string());
         }
@@ -108,7 +106,7 @@ pub enum Handled {
 impl mlua::FromLua for Handled {
     fn from_lua(value: mlua::Value, _: &mlua::Lua) -> mlua::Result<Self> {
         match value {
-            mlua::Value::UserData(ud) => Ok(ud.borrow::<Self>()?.clone()),
+            mlua::Value::UserData(ud) => Ok(*ud.borrow::<Self>()?),
             _ => Err(mlua::Error::FromLuaConversionError {
                 from: value.type_name(),
                 to: "Handled".to_string(),
@@ -133,6 +131,7 @@ pub struct Manifest {
 }
 
 impl Manifest {
+    // TODO move the globals out of this
     pub fn initialize(
         lua: &mlua::Lua,
         scripts_dir: impl AsRef<Path>,
@@ -358,7 +357,7 @@ impl Manifest {
                 if !a.is_empty() {
                     a.push('\n');
                 }
-                a.push_str(&*pattern);
+                a.push_str(&pattern);
                 a
             };
 

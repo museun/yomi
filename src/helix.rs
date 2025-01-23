@@ -64,11 +64,7 @@ impl Client {
             .map(|data| (data.template, data.data))
     }
 
-    fn get_response<'k, 'v, T>(
-        &self,
-        ep: &str,
-        query: &[(&'k str, &'v str)],
-    ) -> Result<data::Data<T>, Error>
+    fn get_response<T>(&self, ep: &str, query: &[(&str, &str)]) -> Result<data::Data<T>, Error>
     where
         for<'de> T: ::serde::Deserialize<'de> + Send + 'static,
     {
@@ -96,7 +92,7 @@ impl UserData for Client {
     {
         methods.add_method("get_stream", |lua, this, name: String| {
             let name = name.strip_prefix('#').unwrap_or(&name);
-            let mut list = this.get_streams([&name]).map_err(mlua::Error::external)?;
+            let mut list = this.get_streams([name]).map_err(mlua::Error::external)?;
             let item = match list.len() {
                 0 => return Ok(mlua::Value::Nil),
                 1 => list.pop().unwrap(),

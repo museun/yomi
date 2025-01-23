@@ -13,7 +13,6 @@ end
 local function fetch(msg, args, on_success)
     local channel = strip_prefix(args.channel or msg.channel, '#')
     local stream = helix:get_stream(channel)
-
     if stream ~= nil then
         on_success(stream)
     else

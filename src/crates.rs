@@ -20,7 +20,7 @@ pub fn lookup_crate(name: &str) -> Option<Crate> {
         .ok()?;
 
     match resp.crates.len() {
-        0 => return None,
+        0 => None,
         _ => Some(resp.crates.remove(0)),
     }
 }

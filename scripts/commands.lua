@@ -22,15 +22,16 @@ local add = {
     handler = function(msg, args)
         if commands[args.name] ~= nil then
             msg:reply(string.format("command %s already exists (%s)", args.name, commands[args.name]))
+            return
+        end
+
+        local body = table.concat(args.body, " ");
+        if is_empty(body) then
+            msg:reply(string.format("an empty body for provided for %s", args.name))
         else
-            local body = table.concat(args.body, " ");
-            if is_empty(body) then
-                msg:reply(string.format("an empty body for provided for %s", args.name))
-            else
-                commands[args.name] = body
-                store:save(store_file, commands)
-                msg:reply(string.format("added %s to be '%s'", args.name, body))
-            end
+            commands[args.name] = body
+            store:save(store_file, commands)
+            msg:reply(string.format("added %s to be '%s'", args.name, body))
         end
     end
 }

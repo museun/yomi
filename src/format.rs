@@ -38,7 +38,7 @@ fn fuzzy_seconds(secs: u64) -> String {
 
     match d.whole_weeks() {
         n if n < 52 => {}
-        52 => return format!("a year ago"),
+        52 => return String::from("a year ago"),
         n => return format!("{n} years ago", n = n / 52),
     }
 

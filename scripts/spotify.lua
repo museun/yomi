@@ -17,7 +17,11 @@ local song = {
     handler = function(msg, args)
         local current = spotify:current()
         if current ~= nil then
-            msg:say(string.format("%s - %s @ %s", join_artists(current), current.name, get_link(current)))
+            msg:say(string.format("%s - %s @ %s",
+                join_artists(current),
+                current.name,
+                get_link(current)
+            ))
         end
     end
 }
@@ -28,7 +32,11 @@ local previous = {
     handler = function(msg, args)
         local item = spotify:previous()
         if item ~= nil then
-            msg:say(string.format("%s - %s @ %s", join_artists(item), item.name, get_link(item)))
+            msg:say(string.format("%s - %s @ %s",
+                join_artists(item),
+                item.name,
+                get_link(item)
+            ))
         end
     end
 }

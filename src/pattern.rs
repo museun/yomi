@@ -14,7 +14,7 @@ impl Part {
             Self::Exact(name)
             | Self::Argument(name)
             | Self::Optional(name)
-            | Self::Variadic(name) => &*name,
+            | Self::Variadic(name) => name,
         }
     }
 
@@ -283,10 +283,9 @@ impl Pattern {
     pub fn is_optional(&self) -> bool {
         match self {
             Self::Exact(_) => false,
-            Self::Arguments(vec) => match &**vec {
-                [Part::Exact(..) | Part::Variadic(..)] => true,
-                _ => false,
-            },
+            Self::Arguments(vec) => {
+                matches!(vec.as_slice(), [Part::Exact(..) | Part::Variadic(..)])
+            }
         }
     }
 }
@@ -298,7 +297,7 @@ pub enum Extract<'a, 'b> {
     Bindings { map: HashMap<&'a str, Value<'b>> },
 }
 
-impl<'a, 'b> Extract<'a, 'b> {
+impl Extract<'_, '_> {
     pub fn map_to_lua(map: HashMap<&str, Value<'_>>, lua: &mlua::Lua) -> mlua::Value {
         let table = lua.create_table().unwrap();
         for (k, v) in map {

@@ -36,8 +36,6 @@ impl Watcher {
             .max_by_key(|x| *x)
     }
 
-    // TODO this has to watch the directory for changes, to reload the main
-    // script. not just the main script
     fn watch(path: PathBuf, tx: flume::Sender<()>) {
         let mut last = SystemTime::now();
 
