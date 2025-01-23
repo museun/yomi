@@ -73,6 +73,7 @@ pub mod fuzzy {
         matches
     }
 
+    // TODO make this optioanlly case sensitive
     fn distance(left: &str, right: &str) -> usize {
         if left == right {
             return 0;
@@ -89,8 +90,8 @@ pub mod fuzzy {
             matrix[0][i] = i;
         }
 
-        for (i, l) in left.chars().enumerate() {
-            for (j, r) in right.chars().enumerate() {
+        for (i, l) in left.chars().map(|c| c.to_ascii_lowercase()).enumerate() {
+            for (j, r) in right.chars().map(|c| c.to_ascii_lowercase()).enumerate() {
                 let cost = if l == r { 0 } else { 1 };
                 matrix[i + 1][j + 1] = (matrix[i][j + 1] + 1)
                     .min(matrix[i + 1][j] + 1)
