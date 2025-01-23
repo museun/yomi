@@ -1,9 +1,7 @@
 ---@meta
 
 ---@alias json string
-
----@type table<string, boolean>
-_LOADED_MODULES = {}
+---@alias handler fun(msg: Message, args: {}?): nil A message handler
 
 ---@type string The directory for data files
 DATA_DIR = ""
@@ -87,8 +85,6 @@ Manifest = {}
 ---@field say fun(msg: Message, data: string): nil Send a message in response
 ---@field reply fun(msg: Message, data: string): nil Reply to user from a message
 Message = {}
-
----@alias handler fun(msg: Message, args: {}?): nil A message handler
 
 ---@class Command         A command binding
 ---@field command string  A unique ID of the command
@@ -302,11 +298,44 @@ re = {
 ---@field artists string[]
 ---@field progress TimeSpan?
 
+---@alias SpotifyUrn string
+
 spotify = {
     --- Tries to get the currently playing song from spotify
-    ---@return SpotifyItem?
+    ---@return SpotifyItem?, string
     current = function(self) end,
+    --- Tries to get the next queued song from spotify
+    ---@return SpotifyItem?, string
+    next = function(self) end,
     --- Tries to get the previously playing song from spotify
-    ---@return SpotifyItem?
+    ---@return SpotifyItem?, string
     previous = function(self) end,
+    --- Tries to skip the current song
+    ---@return boolean
+    skip = function(self) end,
+    --- Tries to get the currently playing song from spotify
+    ---@param urn string A Spotify URN to parse
+    ---@return SpotifyUrn, string
+    parse = function(urn) end,
+    --- Tries to queue a song on spotify
+    ---@param urn SpotifyUrn
+    ---@return SpotifyItem?
+    add_to_queue = function(self, urn) end,
+}
+
+spotify_history = {
+    --- Gets the previously played song
+    ---@return SpotifyItem?, string
+    last = function(self) end,
+    --- Gets the N most recent songs
+    ---@param n integer
+    ---@return SpotifyItem[]?,string
+    history = function(self, n) end,
+    --- Gets the entire playing history
+    ---@return SpotifyItem[]?,string
+    all = function(self) end,
+    --- Counts how many time a song has been played
+    ---@param urn SpotifyUrn
+    ---@return integer?,string
+    count = function(self, urn) end,
 }

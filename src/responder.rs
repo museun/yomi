@@ -1,9 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
+use std::sync::{Arc, Mutex};
 
 use crate::irc::{Message, Response};
 
 // TODO is this abstraction needed?
-pub trait Responder {
+pub trait Responder: Send + Sync {
     fn send(&self, response: Response);
     fn reply(&self, msg: &Message, data: String) {
         self.send(Response::Reply {
@@ -22,18 +22,18 @@ pub trait Responder {
 
 #[derive(Clone, Default)]
 pub struct ResponderCollector {
-    inner: Rc<RefCell<Vec<Response>>>,
+    inner: Arc<Mutex<Vec<Response>>>,
 }
 
 impl ResponderCollector {
     pub fn drain(&self) -> Vec<Response> {
-        std::mem::take(&mut *self.inner.borrow_mut())
+        std::mem::take(&mut *self.inner.lock().unwrap())
     }
 }
 
 impl Responder for ResponderCollector {
     fn send(&self, response: Response) {
-        self.inner.borrow_mut().push(response);
+        self.inner.lock().unwrap().push(response);
     }
 }
 

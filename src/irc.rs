@@ -1,4 +1,4 @@
-use std::{future::Future, rc::Rc, time::Duration};
+use std::{future::Future, sync::Arc, time::Duration};
 
 use mlua::{AnyUserData, FromLua, IntoLua};
 use serde::de::Error;
@@ -71,7 +71,7 @@ impl IntoLua for &Message {
         let responder = lua
             .globals()
             .get::<AnyUserData>("_RESPONDER")?
-            .borrow::<Rc<dyn Responder>>()?;
+            .borrow::<Arc<dyn Responder>>()?;
 
         // this could just be a global lua function `irc.say(msg, data)` and `irc.reply(msg, data)`
         table.set("_responder", AnyUserData::wrap(responder.clone()))?;

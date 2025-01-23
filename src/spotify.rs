@@ -1,29 +1,33 @@
+#![cfg_attr(debug_assertions, allow(dead_code, unused_variables,))]
 use std::{
-    collections::VecDeque,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::Duration,
 };
 
-use mlua::{IntoLua, UserData};
+use mlua::{FromLua, IntoLua, LuaSerdeExt, UserData};
 use url::Url;
 
 use crate::time::TimeSpan;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("Invalid url")]
+    #[error("that was an invalid url")]
     InvalidUrl,
 
-    #[error("Missing spotify urn")]
+    #[error("that is missing spotify urn")]
     MissingUrn,
 
-    #[error("Only tracks are allowed")]
+    #[error("only tracks are allowed")]
     TrackOnly,
 
-    #[error("Cannot get new spotify token")]
+    #[error("cannot get new spotify token")]
     CannotGetNewToken,
 
-    #[error("Http error: {0}")]
+    #[error("there is nothing is in the queue")]
+    NothingInQueue,
+
+    #[error("http error: {0}")]
     Http(#[from] attohttpc::Error),
 }
 
@@ -79,92 +83,10 @@ impl State {
     }
 }
 
-struct Queue<T, const N: usize = 10> {
-    inner: VecDeque<T>,
-}
-
-impl<T> Default for Queue<T, 10> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<T, const N: usize> Queue<T, N> {
-    pub const fn new() -> Self {
-        const { assert!(N != 0, "Queue cannot be empty") }
-        Self {
-            inner: VecDeque::new(),
-        }
-    }
-
-    pub fn push(&mut self, item: T) {
-        while self.inner.len() >= N {
-            self.inner.pop_front();
-        }
-        self.inner.push_back(item);
-    }
-}
-
-impl<'a, T, const N: usize> IntoIterator for &'a Queue<T, N> {
-    type Item = &'a T;
-    type IntoIter = std::collections::vec_deque::Iter<'a, T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.inner.iter()
-    }
-}
-
-#[derive(Default, Clone)]
-pub struct History {
-    queue: Arc<Mutex<Queue<Item>>>,
-}
-
-impl UserData for History {
-    fn add_methods<M: mlua::UserDataMethods<Self>>(methods: &mut M) {
-        methods.add_method("previous", |_lua, this, ()| Ok(this.last()));
-    }
-}
-
-impl History {
-    pub fn push(&self, item: Item) {
-        self.queue.lock().unwrap().push(item);
-    }
-
-    pub fn last(&self) -> Option<Item> {
-        self.queue.lock().unwrap().inner.back().cloned()
-    }
-
-    pub fn listen_for_changes(client: &Client) -> Self {
-        let this = Self::default();
-        std::thread::spawn({
-            let client = client.clone();
-            let this = this.clone();
-            move || {
-                let mut backoff = 10;
-                loop {
-                    match client.get_currently_playing() {
-                        Ok(CurrenlyPlaying::Playing(item)) => {
-                            backoff = 10;
-                            let next = item.duration - item.progress.unwrap();
-                            this.push(item);
-                            std::thread::sleep(next + Duration::from_secs(2));
-                        }
-                        _ => {
-                            std::thread::sleep(std::time::Duration::from_secs(backoff));
-                            backoff += 10
-                        }
-                    }
-                }
-            }
-        });
-        this
-    }
-}
-
 #[derive(Clone)]
 pub struct Client {
     state: Arc<Mutex<State>>,
     session: Arc<Mutex<attohttpc::Session>>,
-    history: History,
 }
 
 impl UserData for Client {
@@ -173,16 +95,43 @@ impl UserData for Client {
         M: mlua::UserDataMethods<Self>,
     {
         methods.add_method("current", |lua, this, ()| {
-            let current = this
-                .get_currently_playing()
-                .map_err(mlua::Error::external)?;
-            match current {
-                CurrenlyPlaying::Playing(item) => item.into_lua(lua),
-                CurrenlyPlaying::NotPlaying => Ok(mlua::Value::Nil),
+            match this.get_currently_playing().ok() {
+                Some(CurrenlyPlaying::Playing(item)) => item.into_lua(lua),
+                Some(CurrenlyPlaying::NotPlaying) | None => Ok(mlua::Value::Nil),
             }
         });
 
-        methods.add_method("previous", |_lua, this, ()| Ok(this.history.last()));
+        methods.add_method("next", |lua, this, ()| match this.get_queue().ok() {
+            Some((_, list)) => match list.first() {
+                Some(item) => item.clone().into_lua(lua),
+                None => Ok(mlua::Value::Nil),
+            },
+            None => Ok(mlua::Value::Nil),
+        });
+
+        methods.add_method("skip", |_lua, this, ()| {
+            Ok(this.skip_song().ok().unwrap_or(false))
+        });
+
+        methods.add_function("parse", |_lua, input: String| {
+            match SpotifyUrn::try_from(input.as_str()) {
+                Ok(urn) => Ok((Some(urn), None)),
+                Err(err) => Ok((None, Some(err.to_string()))),
+            }
+        });
+
+        methods.add_method("add_to_queue", |_lua, this, input: SpotifyUrn| {
+            match this.add_to_queue(&input) {
+                Ok(false) => return Ok((None, Some(String::from("could not add that song")))),
+                Err(err) => return Ok((None, Some(err.to_string()))),
+                _ => {}
+            };
+
+            match this.lookup_by_urn(&input) {
+                Ok(item) => Ok((Some(item), None)),
+                Err(err) => Ok((None, Some(err.to_string()))),
+            }
+        });
     }
 }
 
@@ -191,6 +140,7 @@ impl Client {
         client_id: impl ToString,
         client_secret: impl ToString,
         refresh_token: impl ToString,
+        db_file: impl Into<PathBuf>,
     ) -> Result<Self, Error> {
         let session = {
             let mut session = attohttpc::Session::new();
@@ -199,13 +149,35 @@ impl Client {
         };
 
         let state = State::new(client_id, client_secret, refresh_token, &session)?;
-        let mut this = Self {
+        let this = Self {
             state: Arc::new(Mutex::new(state)),
             session: Arc::new(Mutex::new(session)),
-            history: History::default(),
         };
 
-        this.history = History::listen_for_changes(&this);
+        std::thread::spawn({
+            let path = db_file.into();
+            let this = this.clone();
+            move || {
+                let mut backoff = 10;
+                loop {
+                    match this.get_currently_playing() {
+                        Ok(CurrenlyPlaying::Playing(item)) => {
+                            {
+                                let history = History::open(&path).unwrap();
+                                let _ = history.push(&item.id, &item).unwrap();
+                            }
+                            backoff = 10;
+                            std::thread::sleep(Duration::from_secs(30));
+                        }
+                        Ok(CurrenlyPlaying::NotPlaying) | Err(..) => {
+                            std::thread::sleep(Duration::from_secs(backoff));
+                            backoff += 10;
+                        }
+                    }
+                }
+            }
+        });
+
         Ok(this)
     }
 
@@ -213,7 +185,7 @@ impl Client {
         #[derive(serde::Deserialize)]
         struct Response {
             is_playing: bool,
-            #[serde(rename = "progress_ms", deserialize_with = "spotify_duration")]
+            #[serde(rename = "progress_ms", with = "spotify_duration")]
             progress: Duration,
             item: Item,
         }
@@ -246,6 +218,18 @@ impl Client {
         Ok((resp.currently_playing, resp.queue))
     }
 
+    pub fn skip_song(&self) -> Result<bool, Error> {
+        let resp = self.send(|s| {
+            s.post("https://api.spotify.com/v1/me/player/next")
+                .header(attohttpc::header::CONTENT_LENGTH, 0)
+        })?;
+
+        Ok(matches!(
+            resp.status(),
+            attohttpc::StatusCode::OK | attohttpc::StatusCode::NO_CONTENT
+        ))
+    }
+
     pub fn add_to_queue(&self, urn: &SpotifyUrn) -> Result<bool, Error> {
         let resp = self.send(|s| {
             s.post("https://api.spotify.com/v1/me/player/queue")
@@ -257,6 +241,12 @@ impl Client {
             resp.status(),
             attohttpc::StatusCode::OK | attohttpc::StatusCode::NO_CONTENT
         ))
+    }
+
+    fn lookup_by_urn(&self, urn: &SpotifyUrn) -> Result<Item, Error> {
+        self.send(|s| s.get(format!("https://api.spotify.com/v1/tracks/{}", urn.0)))?
+            .json::<Item>()
+            .map_err(Into::into)
     }
 
     fn send(
@@ -284,15 +274,20 @@ impl Client {
     }
 }
 
-fn spotify_duration<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    serde::Deserialize::deserialize(deserializer).map(Duration::from_millis)
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SpotifyUrn(String);
+
+impl FromLua for SpotifyUrn {
+    fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> mlua::Result<Self> {
+        lua.from_value(value)
+    }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct SpotifyUrn(String);
+impl IntoLua for SpotifyUrn {
+    fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
+        lua.to_value(&self)
+    }
+}
 
 impl<'a> TryFrom<&'a str> for SpotifyUrn {
     type Error = Error;
@@ -320,14 +315,14 @@ impl<'a> TryFrom<&'a str> for SpotifyUrn {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Item {
-    #[serde(rename = "duration_ms", deserialize_with = "spotify_duration")]
+    #[serde(rename = "duration_ms", with = "spotify_duration")]
     pub duration: Duration,
     pub name: String,
     pub id: String,
     pub artists: Vec<Artist>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub progress: Option<Duration>,
 }
 
@@ -347,7 +342,7 @@ impl IntoLua for Item {
     }
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Artist {
     pub name: String,
     pub id: String,
@@ -364,4 +359,169 @@ impl IntoLua for Artist {
 pub enum CurrenlyPlaying {
     Playing(Item),
     NotPlaying,
+}
+
+mod spotify_duration {
+    use serde::{Deserialize, Serialize};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: ::serde::Serializer,
+    {
+        duration.as_millis().serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Deserialize::deserialize(deserializer).map(Duration::from_millis)
+    }
+}
+
+pub struct SpotifyHistory(PathBuf);
+
+impl SpotifyHistory {
+    pub fn new(path: impl Into<PathBuf>) -> Self {
+        Self(path.into())
+    }
+}
+
+impl UserData for SpotifyHistory {
+    fn add_methods<M>(methods: &mut M)
+    where
+        M: mlua::UserDataMethods<Self>,
+    {
+        methods.add_method("last", |_lua, this, ()| {
+            let history = History::open(&this.0).map_err(mlua::Error::external)?;
+            match history.last_n(2) {
+                Ok(item) => match item.as_slice() {
+                    [_, item] => Ok((Some(item.clone()), None)),
+                    _ => Ok((None, None)),
+                },
+                Err(err) => Ok((None, Some(err.to_string()))),
+            }
+        });
+
+        methods.add_method("history", |_lua, this, n: usize| {
+            let history = History::open(&this.0).map_err(mlua::Error::external)?;
+            match history.last_n(n) {
+                Ok(items) => Ok((Some(items), None)),
+                Err(err) => Ok((None, Some(err.to_string()))),
+            }
+        });
+        methods.add_method("all", |_lua, this, ()| {
+            let history = History::open(&this.0).map_err(mlua::Error::external)?;
+            match history.all() {
+                Ok(items) => Ok((Some(items), None)),
+                Err(err) => Ok((None, Some(err.to_string()))),
+            }
+        });
+        methods.add_method("count", |_lua, this, urn: SpotifyUrn| {
+            let history = History::open(&this.0).map_err(mlua::Error::external)?;
+            match history.count(&urn.0) {
+                Ok(count) => Ok((Some(count), None)),
+                Err(err) => Ok((None, Some(err.to_string()))),
+            }
+        });
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+enum HistoryError {
+    #[error("cannot open db: {0}")]
+    CannotOpenDb(String),
+
+    #[error("sql error: {0}")]
+    Sql(#[from] rusqlite::Error),
+}
+
+struct History {
+    conn: rusqlite::Connection,
+}
+
+macro_rules! include_sql {
+    ($name:expr) => {{
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/sql/spotify/",
+            concat!($name, ".sql")
+        ))
+    }};
+}
+
+impl History {
+    const SCHEMA: &str = include_sql!("schema");
+    const PUSH: &str = include_sql!("push");
+    const REMOVE: &str = include_sql!("remove");
+    const REMOVE_ALL: &str = include_sql!("remove_all");
+    const COUNT: &str = include_sql!("count");
+    const CLEAR: &str = include_sql!("clear");
+    const ALL: &str = include_sql!("all");
+    const LAST: &str = include_sql!("last");
+
+    fn open(path: impl AsRef<Path>) -> Result<Self, HistoryError> {
+        let conn = rusqlite::Connection::open(path)
+            .map_err(|err| HistoryError::CannotOpenDb(err.to_string()))?;
+        conn.execute(Self::SCHEMA, [])?;
+        Ok(Self { conn })
+    }
+
+    fn push(&self, key: &str, data: &Item) -> Result<usize, HistoryError> {
+        let value = serde_json::to_value(data).expect("valid shape");
+        let params = rusqlite::params![key, value, key];
+        Ok(self.conn.execute(Self::PUSH, params)?)
+    }
+
+    fn remove(&self, key: &str) -> Result<usize, HistoryError> {
+        Ok(self.conn.execute(Self::REMOVE, [key])?)
+    }
+
+    fn remove_all(&self, key: &str) -> Result<usize, HistoryError> {
+        Ok(self.conn.execute(Self::REMOVE_ALL, [key])?)
+    }
+
+    fn clear(&self) -> Result<usize, HistoryError> {
+        Ok(self.conn.execute(Self::CLEAR, [])?)
+    }
+
+    fn count(&self, key: &str) -> Result<usize, HistoryError> {
+        Ok(self.conn.query_row(Self::COUNT, [key], |row| row.get(0))?)
+    }
+
+    fn all(&self) -> Result<Vec<Item>, HistoryError> {
+        let mut stmt = self.conn.prepare(Self::ALL)?;
+        let query = stmt
+            .query_map([], |row| {
+                let value = row.get("value")?;
+                Ok(serde_json::from_value(value).expect("valid shape"))
+            })?
+            .map(|c| Ok(c?));
+        query.collect()
+    }
+
+    fn last_n(&self, n: usize) -> Result<Vec<Item>, HistoryError> {
+        let mut stmt = self.conn.prepare(Self::LAST)?;
+        let query = stmt
+            .query_map([n], |row| {
+                let value = row.get("value")?;
+                Ok(serde_json::from_value(value).expect("valid shape"))
+            })?
+            .map(|c| Ok(c?));
+        query.collect()
+    }
+
+    fn last(&self) -> Result<Option<Item>, HistoryError> {
+        let mut stmt = self.conn.prepare(Self::LAST)?;
+        let result = stmt.query_row([1], |row| {
+            let value = row.get("value")?;
+            Ok(serde_json::from_value(value).expect("valid shape"))
+        });
+        match result {
+            Ok(item) => Ok(Some(item)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(err) => Err(err.into()),
+        }
+    }
 }

@@ -1,8 +1,4 @@
-#![cfg_attr(debug_assertions, allow(dead_code, unused_variables,))]
-use std::{
-    collections::{HashMap, HashSet},
-    rc::Rc,
-};
+use std::collections::{HashMap, HashSet};
 
 use mlua::{IntoLua, UserData};
 
@@ -18,7 +14,7 @@ pub enum Error {
 
 pub struct Client {
     agent: attohttpc::Session,
-    oauth: Rc<OAuth>,
+    oauth: OAuth,
     base: Option<String>,
 }
 
@@ -34,7 +30,7 @@ impl Client {
 
         Self {
             agent,
-            oauth: Rc::new(oauth),
+            oauth,
             base: ep.into().map(Into::into),
         }
     }
@@ -93,6 +89,7 @@ impl UserData for Client {
     {
         methods.add_method("get_stream", |lua, this, name: String| {
             let name = name.strip_prefix('#').unwrap_or(&name);
+            // TODO Ok((Option, Option)) so local ok, err = func() will work
             let mut list = this.get_streams([name]).map_err(mlua::Error::external)?;
             let item = match list.len() {
                 0 => return Ok(mlua::Value::Nil),
@@ -103,6 +100,7 @@ impl UserData for Client {
         });
 
         methods.add_method("get_emotes_for", |_lua, this, broadcaster_id: String| {
+            // TODO Ok((Option, Option)) so local ok, err = func() will work
             let (_, emotes) = this
                 .get_emotes_for(&broadcaster_id)
                 .map_err(mlua::Error::external)?;

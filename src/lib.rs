@@ -27,5 +27,5 @@ pub use github::Client as GithubClient;
 pub use helix::Client as HelixClient;
 pub use manifest::Manifest;
 pub use responder::{Responder, ResponderChannel};
-pub use spotify::Client as SpotifyClient;
+pub use spotify::{Client as SpotifyClient, SpotifyHistory};
 pub use watcher::Watcher;

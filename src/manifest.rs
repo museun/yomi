@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
-    rc::Rc,
+    sync::Arc,
 };
 
 use mlua::AnyUserData;
@@ -14,7 +14,7 @@ use crate::{
     pattern::{Extract, Pattern},
     rand,
     responder::Responder,
-    spotify,
+    spotify, SpotifyHistory,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -44,7 +44,13 @@ impl Mapping {
         }
     }
 
-    pub fn dispatch(&self, msg: &Message, lua: &mlua::Lua, responder: &impl Responder) {
+    pub fn dispatch(
+        &self,
+        msg: &Message,
+        lua: &mlua::Lua,
+        responder: &impl Responder,
+        sink: &mut bool,
+    ) {
         let Some(data) = msg.data.strip_prefix(&self.command) else {
             return;
         };
@@ -77,8 +83,12 @@ impl Mapping {
             return;
         }
 
-        let Err(err) = self.handler.call::<()>((msg, value)) else {
-            return;
+        let err = match self.handler.call::<Option<Handled>>((msg, value)) {
+            Ok(res) => {
+                *sink = matches!(res, Some(Handled::Sink));
+                return;
+            }
+            Err(err) => err,
         };
 
         if let Some(err) = err.to_string().lines().nth(0).and_then(|c| {
@@ -141,6 +151,7 @@ impl Manifest {
         github: github::Client,
         helix: helix::Client,
         spotify: spotify::Client,
+        spotify_history: SpotifyHistory,
     ) -> mlua::Result<Self> {
         // FIXME initialize should let things register globals themselves
         let emote_map = helix::EmoteMap::fetch_emotes(&helix) //
@@ -167,6 +178,7 @@ impl Manifest {
 
         lua.globals().set("github", github)?;
         lua.globals().set("spotify", spotify)?;
+        lua.globals().set("spotify_history", spotify_history)?;
         lua.globals().set("helix", helix)?;
 
         lua.globals().set("emotes", emote_map)?;
@@ -231,7 +243,7 @@ impl Manifest {
     pub fn set_responder(lua: &mlua::Lua, responder: impl Responder + 'static) -> mlua::Result<()> {
         lua.globals().set(
             "_RESPONDER",
-            AnyUserData::wrap(Rc::new(responder) as Rc<dyn Responder>),
+            AnyUserData::wrap(Arc::new(responder) as Arc<dyn Responder>),
         )
     }
 
@@ -396,8 +408,12 @@ impl Manifest {
             }
         }
 
+        let mut sink = false;
         for mapping in &self.commands {
-            mapping.dispatch(&msg, lua, responder);
+            mapping.dispatch(&msg, lua, responder, &mut sink);
+            if sink {
+                break;
+            }
         }
     }
 }

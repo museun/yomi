@@ -1,6 +1,6 @@
 use yomi::{
     irc, Config, GithubClient, HelixClient, Manifest, Responder, ResponderChannel, SpotifyClient,
-    Watcher,
+    SpotifyHistory, Watcher,
 };
 
 enum Next {
@@ -69,7 +69,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &config.spotify.client_id,
         &*config.spotify.client_secret,
         &*config.spotify.refresh_token,
+        config.paths.data.join("spotify.db"),
     )?;
+
+    let spotify_history = SpotifyHistory::new(config.paths.data.join("spotify.db"));
 
     let mut manifest = Manifest::initialize(
         &lua,
@@ -81,6 +84,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         github,
         helix,
         spotify,
+        spotify_history,
     )?;
 
     let mut our_user = irc::User::default();
