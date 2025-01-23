@@ -28,7 +28,6 @@ pub enum Error {
 
 #[derive(Debug)]
 pub struct Mapping {
-    pub module: String,
     pub command: String,
     pub pattern: Option<Pattern>,
     pub raw_pattern: Option<String>,
@@ -212,6 +211,10 @@ impl Manifest {
         Ok(this)
     }
 
+    // FIXME why is this doing what its doing?
+    // this also has a weird bug where only part of the file is synced
+    //
+    // XXX this is used in 2 different ways. we want an initial read and a 're-read'
     pub fn read_init_lua(path: impl AsRef<Path>) -> Result<String, Error> {
         let path = path.as_ref();
         loop {
@@ -311,7 +314,6 @@ impl Manifest {
                         };
 
                         let mapping = Mapping {
-                            module: module.clone(),
                             command,
                             pattern,
                             raw_pattern,

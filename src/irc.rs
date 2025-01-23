@@ -73,8 +73,10 @@ impl IntoLua for &Message {
             .get::<AnyUserData>("_RESPONDER")?
             .borrow::<Rc<dyn Responder>>()?;
 
+        // this could just be a global lua function `irc.say(msg, data)` and `irc.reply(msg, data)`
         table.set("_responder", AnyUserData::wrap(responder.clone()))?;
 
+        // BUG where is `msg:error`?
         table.set(
             "reply",
             lua.create_function({
