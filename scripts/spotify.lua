@@ -12,7 +12,7 @@ end
 
 ---@type Command
 local song = {
-    command = ",song",
+    command = "!song",
     help = "tries to get the currently playing song from spotify",
     handler = function(msg, args)
         local current = spotify:current()
@@ -23,7 +23,7 @@ local song = {
 }
 
 local previous = {
-    command = ",previous",
+    command = "!previous",
     help = "tries to get the previous song from spotify",
     handler = function(msg, args)
         local item = spotify:previous()

@@ -20,7 +20,7 @@ end
 
 ---@type Command
 local greet = {
-    command = ",hello",
+    command = "!hello",
     help = "greets the user",
     handler = function(msg, args)
         local greeting = rand:choose(greetings) or "hello"

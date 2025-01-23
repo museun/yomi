@@ -20,7 +20,7 @@ end
 
 ---@type Command
 local font = {
-    command = ",font",
+    command = "!font",
     help = "the current VSCode fonts",
     handler = function(msg, args)
         local settings = get_current_settings(msg)
@@ -40,7 +40,7 @@ local font = {
 
 ---@type Command
 local theme = {
-    command = ",theme",
+    command = "!theme",
     help = "the current VSCode theme",
     handler = function(msg, args)
         local settings = get_current_settings(msg)

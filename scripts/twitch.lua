@@ -23,7 +23,7 @@ end
 
 ---@type Command
 local uptime = {
-    command = ",uptime",
+    command = "!uptime",
     args = "<channel?>",
     help = "get the a twitch stream's uptime",
     ---@param args {channel: string?}
@@ -39,7 +39,7 @@ local uptime = {
 
 ---@type Command
 local viewers = {
-    command = ",viewers",
+    command = "!viewers",
     args = "<channel?>",
     help = "get the number of viewers for twitch stream",
     ---@param args {channel: string?}

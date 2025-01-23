@@ -154,7 +154,7 @@ end
 
 ---@type Command
 local help = {
-    command = ",help",
+    command = "!help",
     args = "<command?>",
     help = "list commands, or looks up a command",
     handler = show_help

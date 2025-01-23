@@ -10,25 +10,25 @@ local answers = {
     [re.compile("(?i)((((editor|ide) is (this|.?*using).*?)|\z
                 (ide|editor))\\?)|\z
                 (what editor\\s*?(is (this|that))?)\\??")] = {
-        command = ",editor",
+        command = "!editor",
     },
     [re.compile("(?i)song(\\sname)?\\?")] = {
-        command = ",song",
+        command = "!song",
     },
     [re.compile("(?i)what theme.*?\\?")] = {
-        command = ",theme",
+        command = "!theme",
     },
     [re.compile("(?i)what font.*?\\?")] = {
-        command = ",font",
+        command = "!font",
     },
     [re.compile("(?i)how can I (make|get) my (editor|vsc)\\?")] = {
-        command = ",settings",
+        command = "!settings",
     },
     [re.compile("(?i)what os\\s*?((are you using)|(is this))?\\??")] = {
-        command = ",os",
+        command = "!os",
     },
     [re.compile("(?i)what('?s)? is the extension for (vscode|vsc|visual studio)\\??")] = {
-        command = ",extension",
+        command = "!extension",
     },
     [re.compile("(?i)(learn.*?rust)|(get started in rust)|(start with rust)")] = {
         body = "you can find resources to learn rust here: https://rust-lang.org/learn",
@@ -40,7 +40,7 @@ local answers = {
                  what are you (making|doing)\\s?\\?|\z
                  .*?project of today.*?|\z
                  .*?random project\\s?\\?|what('s)?(.*?)today\\s?\\?")] = {
-        command = ",project",
+        command = "!project",
     },
     [re.compile("(?i)(where is the sub(scribe)? button\\??)|\z
                 (how can I sub\\??)|(subscribe\\??)")] = {

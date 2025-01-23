@@ -15,7 +15,7 @@ end
 
 ---@type Command
 local add = {
-    command = ",add",
+    command = "!add",
     args = "<name> <body...>",
     help = "add a command",
     elevated = true,
@@ -37,7 +37,7 @@ local add = {
 
 ---@type Command
 local update = {
-    command = ",update",
+    command = "!update",
     args = "<name> <body...>",
     help = "update a command",
     elevated = true,
@@ -61,7 +61,7 @@ local update = {
 
 ---@type Command
 local remove = {
-    command = ",remove",
+    command = "!remove",
     args = "<name>",
     help = "remove a command",
     elevated = true,

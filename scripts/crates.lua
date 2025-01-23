@@ -22,7 +22,7 @@ end
 
 ---@type Command
 local crate = {
-    command = ",crate",
+    command = "!crate",
     args = "<crate_name>",
     help = "looks up a crate on crates.io",
     handler = lookup_crate

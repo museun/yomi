@@ -3,7 +3,7 @@ local aliases = store:load(alias_file) or {}
 
 ---@type Command
 local alias = {
-    command = ",alias",
+    command = "!alias",
     args = "<src> <dst>",
     help = "aliases a command to another name",
     elevated = true,
