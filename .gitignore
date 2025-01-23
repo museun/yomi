@@ -1,5 +1,4 @@
 /target
 .*.env
-config.lua
-scripts/*.lua
-!/scripts/init.lua
+data/*
+data/.gitkeep

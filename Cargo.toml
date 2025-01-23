@@ -4,11 +4,24 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.95"
-flume = { version = "0.11.1", default-features = false, features = [ "select", "eventual-fairness" ] }
-mlua = { version = "0.10.2", features = [ "vendored", "lua54", "serialize", "macros" ] }
+alto_logger = "0.4.0"
+attohttpc = { version = "0.28.2", features = [ "json", "basic-auth", "form" ] }
+fastrand = "2.3.0"
+flume = { version = "0.11.1", default-features = false, features = [ "select", "eventual-fairness", "async" ] }
+log = { version = "0.4.25", features = [ "std" ] }
+mlua = { version = "0.10.2", features = [ "lua54", "serialize" ] } # "vendored"
+regex = "1.11.1"
 serde = { version = "1.0.217", features = [ "derive" ] }
-serde_json = "1.0.135"
+serde_json = "1.0.137"
 simple_env_load = "0.2.0"
-twitch_message = { git = "https://github.com/museun/twitch_message", version = "0.1.2", features = [ "std" ] }
-ureq = "2.12.1"
+thiserror = "2.0.11"
+time = { version = "0.3.37", features = [ "macros", "formatting", "parsing", "serde" ] }
+tokio = { version = "1.43.0", features = [ "rt", "net", "time", "io-util", "macros" ] }
+twitch_message = { git = "https://github.com/museun/twitch_message", features = [ "std" ] }
+url = "2.5.4"
+
+[patch.crates-io]
+alto_logger = { path = "f:/forks/alto_logger" }
+
+[dev-dependencies]
+serde_json = "1.0.137"
