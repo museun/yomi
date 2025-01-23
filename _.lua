@@ -16,6 +16,12 @@ SETTINGS_GIST_ID = ""
 ---@return string | nil
 function get_env(key) end
 
+--- Does a fuzzy search for 'needle' in 'haystack' with a minimum tolerance
+---@param needle string
+---@param haystack string[]
+---@param tolerance number
+function fuzzy(needle, haystack, tolerance) end
+
 ---@class Crate A crates.io crate
 ---@field name string           The name of the crate
 ---@field max_version string    The current version of the crate

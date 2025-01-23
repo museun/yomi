@@ -7,6 +7,7 @@ use std::{
 use mlua::AnyUserData;
 
 use crate::{
+    fuzzy::closest,
     github, helix,
     help::HelpProvider,
     irc::{self, Message},
@@ -151,6 +152,17 @@ impl Manifest {
         lua.globals().set("_LOADED_MODULES", lua.create_table()?)?;
         lua.globals().set("DATA_DIR", data_dir.as_ref())?;
         lua.globals().set("SETTINGS_GIST_ID", gist_id)?;
+
+        lua.globals().set(
+            "fuzzy",
+            mlua::Function::wrap(|input: String, data: Vec<String>, tolerance: f32| {
+                let data = data.iter().collect::<Vec<&String>>();
+                let out = closest(&input, data, tolerance);
+                let owned = out.into_iter().map(ToString::to_string);
+                let owned = owned.collect::<Vec<_>>();
+                Ok(owned)
+            }),
+        )?;
 
         lua.globals().set("github", github)?;
         lua.globals().set("spotify", spotify)?;
