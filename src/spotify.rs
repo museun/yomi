@@ -113,6 +113,13 @@ impl UserData for Client {
             Ok(this.skip_song().ok().unwrap_or(false))
         });
 
+        methods.add_method("search", |lua, this, query: String| {
+            match this.search(&query) {
+                Ok(list) => Ok((Some(list), None)),
+                Err(err) => Ok((None, Some(err.to_string()))),
+            }
+        });
+
         methods.add_function("parse", |_lua, input: String| {
             match SpotifyUrn::try_from(input.as_str()) {
                 Ok(urn) => Ok((Some(urn), None)),
@@ -140,7 +147,6 @@ impl Client {
         client_id: impl ToString,
         client_secret: impl ToString,
         refresh_token: impl ToString,
-        db_file: impl Into<PathBuf>,
     ) -> Result<Self, Error> {
         let session = {
             let mut session = attohttpc::Session::new();
@@ -149,13 +155,14 @@ impl Client {
         };
 
         let state = State::new(client_id, client_secret, refresh_token, &session)?;
-        let this = Self {
+        Ok(Self {
             state: Arc::new(Mutex::new(state)),
             session: Arc::new(Mutex::new(session)),
-        };
+        })
+    }
 
+    pub fn listen_for_changes(this: &Self, path: PathBuf) {
         std::thread::spawn({
-            let path = db_file.into();
             let this = this.clone();
             move || {
                 let mut backoff = 10;
@@ -177,8 +184,6 @@ impl Client {
                 }
             }
         });
-
-        Ok(this)
     }
 
     pub fn get_currently_playing(&self) -> Result<CurrenlyPlaying, Error> {
@@ -228,6 +233,28 @@ impl Client {
             resp.status(),
             attohttpc::StatusCode::OK | attohttpc::StatusCode::NO_CONTENT
         ))
+    }
+
+    pub fn search(&self, query: &str) -> Result<Vec<Item>, Error> {
+        #[derive(serde::Deserialize)]
+        struct Response {
+            tracks: Tracks,
+        }
+        #[derive(serde::Deserialize)]
+        struct Tracks {
+            items: Vec<Item>,
+        }
+
+        let resp = self.send(|s| {
+            s.get("https://api.spotify.com/v1/search").params(&[
+                ("q", query),
+                ("type", "track"),
+                ("limit", "3"),
+            ])
+        })?;
+
+        let resp = resp.json::<Response>()?;
+        Ok(resp.tracks.items)
     }
 
     pub fn add_to_queue(&self, urn: &SpotifyUrn) -> Result<bool, Error> {
@@ -411,6 +438,7 @@ impl UserData for SpotifyHistory {
                 Err(err) => Ok((None, Some(err.to_string()))),
             }
         });
+
         methods.add_method("all", |_lua, this, ()| {
             let history = History::open(&this.0).map_err(mlua::Error::external)?;
             match history.all() {
@@ -418,6 +446,7 @@ impl UserData for SpotifyHistory {
                 Err(err) => Ok((None, Some(err.to_string()))),
             }
         });
+
         methods.add_method("count", |_lua, this, urn: SpotifyUrn| {
             let history = History::open(&this.0).map_err(mlua::Error::external)?;
             match history.count(&urn.0) {
@@ -523,5 +552,22 @@ impl History {
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(err) => Err(err.into()),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn search() {
+        simple_env_load::load_env_from([".dev.env", ".secrets.env"]);
+
+        let client_id = std::env::var("SHAKEN_SPOTIFY_CLIENT_ID").unwrap();
+        let client_secret = std::env::var("SHAKEN_SPOTIFY_CLIENT_SECRET").unwrap();
+        let refresh_token = std::env::var("SHAKEN_SPOTIFY_REFRESH_TOKEN").unwrap();
+
+        let client = Client::new(client_id, client_secret, refresh_token).unwrap();
+        let s = client.search("kanashiki heaven").unwrap();
+        eprintln!("{s:#?}");
     }
 }

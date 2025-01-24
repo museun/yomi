@@ -45,6 +45,27 @@ local next = {
     end
 }
 
+---@type Command
+local search = {
+    command = "!search",
+    args = "<query...>",
+    help = "looks up a song by its title on spotify",
+    handler = function(msg, args)
+        if msg.channel_id ~= BOT_USER.user_id then
+            return
+        end
+        local items, _ = spotify:search(table.concat(args.query, " "));
+        if items then
+            for _, item in ipairs(items) do
+                msg:say(string.format("%s - %s @ %s",
+                    join_artists(item),
+                    item.name,
+                    get_link(item)
+                ))
+            end
+        end
+    end
+}
 
 ---@type Command
 local previous = {
@@ -153,4 +174,4 @@ local status = {
 }
 
 ---@type Command[]
-return { song, next, previous, request, skip, status, toggle }
+return { song, next, previous, request, skip, status, toggle, search }

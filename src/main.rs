@@ -69,8 +69,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &config.spotify.client_id,
         &*config.spotify.client_secret,
         &*config.spotify.refresh_token,
-        config.paths.data.join("spotify.db"),
     )?;
+    SpotifyClient::listen_for_changes(&spotify, config.paths.data.join("spotify.db"));
 
     let spotify_history = SpotifyHistory::new(config.paths.data.join("spotify.db"));
 
@@ -112,6 +112,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match event {
             irc::Event::Connected { user } => {
                 our_user = user;
+                lua.globals().set("BOT_USER", &our_user)?;
+
                 for channel in &config.twitch.channels {
                     responder.send(irc::Response::Join {
                         channel: channel.clone(),

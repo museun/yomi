@@ -9,6 +9,12 @@ DATA_DIR = ""
 ---@type string The gist id for the user settings
 SETTINGS_GIST_ID = ""
 
+---@class BOT_USER The current bots information
+---@field name string The bot's name
+---@field display string The bot's display name
+---@field user_id string The bot's user_id
+BOT_USER = {}
+
 --- Tries to get a `key` from the env.
 ---@param key string
 ---@return string | nil
@@ -321,6 +327,10 @@ spotify = {
     ---@param urn SpotifyUrn
     ---@return SpotifyItem?
     add_to_queue = function(self, urn) end,
+    --- Looks up a song on spotify
+    ---@param query string
+    ---@return SpotifyItem[], string
+    search = function(self, query) end,
 }
 
 spotify_history = {
