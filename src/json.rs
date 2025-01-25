@@ -1,6 +1,11 @@
 use mlua::{LuaSerdeExt, UserData};
 
+use crate::GlobalItem;
+
 pub struct Json;
+impl GlobalItem for Json {
+    const MODULE: &'static str = "json";
+}
 
 impl UserData for Json {
     fn add_methods<M>(methods: &mut M)

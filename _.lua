@@ -3,11 +3,19 @@
 ---@alias json string
 ---@alias handler fun(msg: Message, args: {}?): nil A message handler
 
----@type string The directory for data files
-DATA_DIR = ""
-
----@type string The gist id for the user settings
-SETTINGS_GIST_ID = ""
+---@class config The public read-only bot configuration
+config = {
+    paths = {
+        ---@type string
+        data = "",
+        ---@type string
+        scripts = ""
+    },
+    github = {
+        ---@type string
+        settings_gist_id = "",
+    }
+}
 
 ---@class BOT_USER The current bots information
 ---@field name string The bot's name
@@ -20,11 +28,13 @@ BOT_USER = {}
 ---@return string | nil
 function get_env(key) end
 
---- Does a fuzzy search for 'needle' in 'haystack' with a minimum tolerance
----@param needle string
----@param haystack string[]
----@param tolerance number
-function fuzzy(needle, haystack, tolerance) end
+fuzzy = {
+    --- Does a fuzzy search for 'needle' in 'haystack' with a minimum tolerance
+    ---@param needle string
+    ---@param haystack string[]
+    ---@param tolerance number
+    closest = function(needle, haystack, tolerance) end,
+}
 
 ---@class Crate A crates.io crate
 ---@field name string           The name of the crate
@@ -36,10 +46,12 @@ function fuzzy(needle, haystack, tolerance) end
 ---@field updated_at UtcTime    When the crate was last updated
 Crate = {}
 
---- Tries to look up a crate on crates.io
----@param crate string
----@return Crate?
-function crates(crate) end
+crates = {
+    --- Tries to look up a crate on crates.io
+    ---@param crate string
+    ---@return Crate?
+    lookup = function(crate) end,
+}
 
 ---@enum Handled Returned from listeners to determine if other listeners should run
 Handled = {
@@ -260,6 +272,21 @@ store = {
     ---@param key string The store key to use
     ---@param value {} The table to store
     save = function(self, key, value) end,
+    --- Persists a key=value pair to the specified `ns` db
+    ---@param ns string The database to use
+    ---@param key string The key to use
+    ---@param value any The value to store
+    set = function(self, ns, key, value) end,
+    --- Gets a value from the specified `ns` based on the provided key
+    ---@param ns string The database to use
+    ---@param key string The key to use
+    ---@return any?
+    get = function(self, ns, key) end,
+    --- Remove a value from the specified `ns` db
+    ---@param ns string The database to use
+    ---@param key string The key to use
+    ---@returns boolean
+    remove = function(self, ns, key) end,
 }
 
 json = {
@@ -348,4 +375,32 @@ spotify_history = {
     ---@param urn SpotifyUrn
     ---@return integer?,string
     count = function(self, urn) end,
+}
+
+aliases = {
+    --- lookup the aliases for a command
+    ---@param command string
+    ---@return string[],string?
+    lookup = function(self, command) end,
+    --- checks if this alias exists for anytihng
+    ---@param query string
+    ---@return boolean,string?
+    contains = function(self, query) end,
+    --- tries to get the command for this alias
+    ---@param alias string
+    ---@return string?, string?
+    resolve = function(self, alias) end,
+    --- add this alias to this command
+    ---@param command string
+    ---@param alias string
+    ---@return boolean,string?
+    add = function(self, command, alias) end,
+    --- remove this alias from whatever command its associated with
+    ---@param alias string
+    ---@return boolean,string?
+    remove = function(self, alias) end,
+    --- clear all aliases for this command
+    ---@param command string
+    ---@return boolean,string?
+    clear = function(self, command) end,
 }

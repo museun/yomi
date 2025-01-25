@@ -1,9 +1,23 @@
 use std::borrow::Cow;
 
-use mlua::IntoLua;
+use mlua::{IntoLua, UserData};
 use time::{format_description::FormatItem, macros::format_description, OffsetDateTime};
 
-use crate::time::UtcTime;
+use crate::{time::UtcTime, GlobalItem};
+
+pub struct Crates;
+impl UserData for Crates {
+    fn add_methods<M>(methods: &mut M)
+    where
+        M: mlua::UserDataMethods<Self>,
+    {
+        methods.add_function("lookup", |_lua, name: String| Ok(lookup_crate(&name)));
+    }
+}
+
+impl GlobalItem for Crates {
+    const MODULE: &'static str = "crates";
+}
 
 pub fn lookup_crate(name: &str) -> Option<Crate> {
     #[derive(serde::Deserialize)]

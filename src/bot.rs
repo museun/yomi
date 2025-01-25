@@ -1,9 +1,13 @@
 use mlua::UserData;
 
-use crate::irc;
+use crate::{irc, GlobalItem};
 
 pub struct Bot {
     tx: flume::Sender<irc::Message>,
+}
+
+impl GlobalItem for Bot {
+    const MODULE: &'static str = "bot";
 }
 
 impl Bot {
@@ -17,10 +21,10 @@ impl UserData for Bot {
     where
         M: mlua::UserDataMethods<Self>,
     {
-        methods.add_method_mut(
+        methods.add_method(
             "reroute_command",
-            |_lua, this, (mut msg, command): (irc::Message, String)| {
-                msg.data = command;
+            |_lua, this, (mut msg, command): (irc::Message, Option<String>)| {
+                msg.data = command.unwrap_or(msg.data);
                 let _ = this.tx.send(msg);
                 Ok(())
             },

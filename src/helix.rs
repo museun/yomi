@@ -2,6 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use mlua::{IntoLua, UserData};
 
+use crate::GlobalItem;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Twitch client id was empty")]
@@ -16,6 +18,10 @@ pub struct Client {
     agent: attohttpc::Session,
     oauth: OAuth,
     base: Option<String>,
+}
+
+impl GlobalItem for Client {
+    const MODULE: &'static str = "helix";
 }
 
 impl Client {
@@ -110,6 +116,7 @@ impl UserData for Client {
 }
 
 #[derive(Clone, Debug, Default, serde::Deserialize)]
+#[allow(dead_code)]
 struct OAuth {
     access_token: String,
     refresh_token: Option<String>,
@@ -147,14 +154,6 @@ impl OAuth {
         })?)
     }
 
-    fn with_client_credentials(client_id: &str, bearer_token: &str) -> Self {
-        Self {
-            client_id: client_id.to_string(),
-            bearer_token: bearer_token.to_string(),
-            ..Default::default()
-        }
-    }
-
     fn get_client_id(&self) -> &str {
         &self.client_id
     }
@@ -170,6 +169,10 @@ pub struct EmoteMap {
     name_to_id: HashMap<String, String>,
     id_to_name: HashMap<String, String>,
     names: HashSet<String>,
+}
+
+impl GlobalItem for EmoteMap {
+    const MODULE: &'static str = "emotes";
 }
 
 impl UserData for EmoteMap {

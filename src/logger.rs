@@ -1,4 +1,10 @@
+use crate::globals::GlobalItem;
+
 pub struct Logger;
+
+impl GlobalItem for Logger {
+    const MODULE: &'static str = "log";
+}
 
 impl mlua::UserData for Logger {
     fn add_methods<M>(methods: &mut M)

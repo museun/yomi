@@ -1,21 +1,9 @@
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
-use mlua::AnyUserData;
-
-use crate::{
-    fuzzy::closest,
-    github, helix,
-    help::HelpProvider,
-    irc::{self, Message},
-    pattern::{Extract, Pattern},
-    rand,
-    responder::Responder,
-    spotify, SpotifyHistory,
-};
+use crate::{help::HelpProvider, irc::Message, pattern::Pattern, responder::Responder};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -26,111 +14,11 @@ pub enum Error {
     Lua(#[from] mlua::Error),
 }
 
-#[derive(Debug)]
-pub struct Mapping {
-    pub command: String,
-    pub pattern: Option<Pattern>,
-    pub raw_pattern: Option<String>,
-    pub help: String,
-    pub elevated: bool,
-    pub handler: mlua::Function,
-}
+mod handled;
+pub use handled::Handled;
 
-impl Mapping {
-    fn make_error(&self) -> String {
-        match &self.raw_pattern {
-            Some(p) => format!("invalid usage. syntax: {} {p}", self.command),
-            None => format!("invalid usage. syntax: {}", self.command),
-        }
-    }
-
-    pub fn dispatch(
-        &self,
-        msg: &Message,
-        lua: &mlua::Lua,
-        responder: &impl Responder,
-        sink: &mut bool,
-    ) {
-        let Some(data) = msg.data.strip_prefix(&self.command) else {
-            return;
-        };
-
-        let data = data.trim();
-        let value = match &self.pattern {
-            Some(pat) if pat.is_optional() && data.is_empty() => {
-                responder.reply(msg, self.make_error());
-                return;
-            }
-
-            None if !data.is_empty() => {
-                responder.reply(msg, self.make_error());
-                return;
-            }
-
-            Some(pat) => match pat.extract(data) {
-                Extract::NoMatch => {
-                    responder.reply(msg, self.make_error());
-                    return;
-                }
-                Extract::Match => mlua::Value::Nil,
-                Extract::Bindings { map } => Extract::map_to_lua(map, lua),
-            },
-            None => mlua::Value::Nil,
-        };
-
-        if self.elevated && !msg.is_elevated() {
-            responder.reply(msg, "you cannot do that command".to_string());
-            return;
-        }
-
-        let err = match self.handler.call::<Option<Handled>>((msg, value)) {
-            Ok(res) => {
-                *sink = matches!(res, Some(Handled::Sink));
-                return;
-            }
-            Err(err) => err,
-        };
-
-        if let Some(err) = err.to_string().lines().nth(0).and_then(|c| {
-            c.split_terminator(": ").find(|c| {
-                !(c.contains("runtime error") || c.contains("./scripts") || c.contains("src"))
-            })
-        }) {
-            responder.error(msg, err.to_string());
-        }
-
-        log::warn!(
-            "cannot call: {command} because {err}",
-            command = self.command
-        )
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum Handled {
-    Bubble,
-    Sink,
-}
-
-impl mlua::FromLua for Handled {
-    fn from_lua(value: mlua::Value, _: &mlua::Lua) -> mlua::Result<Self> {
-        match value {
-            mlua::Value::UserData(ud) => Ok(*ud.borrow::<Self>()?),
-            _ => Err(mlua::Error::FromLuaConversionError {
-                from: value.type_name(),
-                to: "Handled".to_string(),
-                message: None,
-            }),
-        }
-    }
-}
-
-impl mlua::UserData for Handled {
-    fn add_fields<F: mlua::UserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_function_get("bubble", |_lua, _| Ok(Self::Bubble));
-        fields.add_field_function_get("sink", |_lua, _| Ok(Self::Sink));
-    }
-}
+mod mapping;
+pub use mapping::Mapping;
 
 #[derive(Debug)]
 pub struct Manifest {
@@ -140,80 +28,21 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    // TODO move the globals out of this
     pub fn initialize(
         lua: &mlua::Lua,
         scripts_dir: impl AsRef<Path>,
-        data_dir: impl AsRef<Path>,
         source: &str,
-        gist_id: &str,
-        reroute: flume::Sender<irc::Message>,
-        github: github::Client,
-        helix: helix::Client,
-        spotify: spotify::Client,
-        spotify_history: SpotifyHistory,
     ) -> mlua::Result<Self> {
-        // FIXME initialize should let things register globals themselves
-        let emote_map = helix::EmoteMap::fetch_emotes(&helix) //
-            .expect("TODO this should be built elsewhere");
+        let scripts = scripts_dir.as_ref();
 
-        lua.globals().set("log", crate::logger::Logger)?;
-
-        // this is an enum, but it somehow still works
-        lua.globals().set("Handled", Handled::Sink)?;
-        lua.globals().set("_LOADED_MODULES", lua.create_table()?)?;
-        lua.globals().set("DATA_DIR", data_dir.as_ref())?;
-        lua.globals().set("SETTINGS_GIST_ID", gist_id)?;
-
-        lua.globals().set(
-            "fuzzy",
-            mlua::Function::wrap(|input: String, data: Vec<String>, tolerance: f32| {
-                let data = data.iter().collect::<Vec<&String>>();
-                let out = closest(&input, data, tolerance);
-                let owned = out.into_iter().map(ToString::to_string);
-                let owned = owned.collect::<Vec<_>>();
-                Ok(owned)
-            }),
-        )?;
-
-        lua.globals().set("github", github)?;
-        lua.globals().set("spotify", spotify)?;
-        lua.globals().set("spotify_history", spotify_history)?;
-        lua.globals().set("helix", helix)?;
-
-        lua.globals().set("emotes", emote_map)?;
-
-        lua.globals().set("bot", crate::bot::Bot::new(reroute))?;
-        lua.globals().set("re", crate::re::Regex)?;
-        lua.globals().set("json", crate::json::Json)?;
-        lua.globals().set("store", crate::store::Store)?;
-
-        lua.globals().set(
-            "rand", // TODO make this mockable
-            rand::Rando::new(fastrand::Rng::new()),
-        )?;
-
-        lua.globals().set("crates", {
-            lua.create_function(|_, key: String| Ok(crate::crates::lookup_crate(&key)))?
-        })?;
-
-        let require = lua.globals().get::<mlua::Function>("require")?;
-        lua.globals().set("require", {
-            lua.create_function(move |lua, name: String| {
-                lua.globals()
-                    .get::<mlua::Table>("_LOADED_MODULES")?
-                    .set(&*name, true)?;
-                require.call::<mlua::Value>(name)
-            })?
-        })?;
-
-        let package = lua.globals().get::<mlua::Table>("package")?;
         // BUG figure out the syntax for excluding a specific file
         // we don't want a cycle between init -> foo -> init
-        package.set("path", scripts_dir.as_ref().join("?.lua"))?;
+        lua.globals()
+            .get::<mlua::Table>("package")?
+            .set("path", scripts.join("?.lua"))?;
 
         let mut this = Self {
-            init: scripts_dir.as_ref().join("init.lua"),
+            init: scripts.join("init.lua"),
             commands: vec![],
             listeners: vec![],
         };
@@ -221,30 +50,6 @@ impl Manifest {
             log::warn!("{err}")
         }
         Ok(this)
-    }
-
-    // FIXME why is this doing what its doing?
-    // this also has a weird bug where only part of the file is synced
-    //
-    // XXX this is used in 2 different ways. we want an initial read and a 're-read'
-    pub fn read_init_lua(path: impl AsRef<Path>) -> Result<String, Error> {
-        let path = path.as_ref();
-        loop {
-            let data = std::fs::read_to_string(path)?;
-            if !data.trim().is_empty() {
-                break Ok(data);
-            }
-            std::hint::spin_loop();
-            std::thread::sleep(std::time::Duration::from_millis(10));
-        }
-    }
-
-    // FIXME this should be different
-    pub fn set_responder(lua: &mlua::Lua, responder: impl Responder + 'static) -> mlua::Result<()> {
-        lua.globals().set(
-            "_RESPONDER",
-            AnyUserData::wrap(Arc::new(responder) as Arc<dyn Responder>),
-        )
     }
 
     pub fn load(&mut self, lua: &mlua::Lua, data: &str) -> Result<(), Error> {
@@ -397,7 +202,7 @@ impl Manifest {
         Ok(())
     }
 
-    pub fn dispatch(&self, msg: Message, lua: &mlua::Lua, responder: &impl Responder) {
+    pub fn dispatch(&self, msg: Message, lua: &mlua::Lua, responder: &Responder) {
         log::trace!("[{}] {}: {}", msg.channel, msg.sender, msg.data);
 
         for listener in &self.listeners {

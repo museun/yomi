@@ -1,6 +1,3 @@
-local alias_file <const> = "aliases"
-local aliases = store:load(alias_file) or {}
-
 ---@type Command
 local alias = {
     command = "!alias",
@@ -8,18 +5,17 @@ local alias = {
     help = "aliases a command to another name",
     elevated = true,
     handler = function(msg, args)
-        if aliases[args.src] ~= nil then
+        if aliases:contains(args.src) then
             msg:reply(string.format("alias %s already exists (%s)", args.src, aliases[args.src]))
             return;
         end
 
-        if aliases[args.dst] ~= nil then
+        if aliases:contains(args.dst) then
             msg:reply(string.format("alias %s already exists (%s)", args.dst, aliases[args.dst]))
             return;
         end
 
-        aliases[args.dst] = args.src
-        store:save(alias_file, aliases)
+        aliases:add(args.dst, args.src)
         msg:reply(string.format("aliased %s to %s", args.src, args.dst))
     end
 }
@@ -31,9 +27,10 @@ local function redirect(msg)
     head = head or msg.data
     tail = tail or ""
 
-    local item = aliases[head]
+    -- this needs to be a resolve
+    local item, err = aliases:resolve(head);
     if item ~= nil then
-        log:info(string.format("redirecting %s to %s", head, item))
+        log:debug(string.format("redirecting %s to %s", head, item))
         bot:reroute_command(msg, item .. tail)
         return Handled.sink
     end

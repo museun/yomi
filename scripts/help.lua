@@ -1,9 +1,10 @@
 local max_width <const> = 100
 
 ---@param seq Help[]
----@param width integer
-local function wrap(seq, width)
+---@param w integer?
+local function wrap(seq, w)
     local names = {}
+    local width = w or max_width
 
     for _, help in ipairs(seq) do
         table.insert(names, help)
@@ -67,7 +68,7 @@ local function find_nearest(key)
         return merged
     end
 
-    return fuzzy(key, merge(), 0.7)[1]
+    return fuzzy.closest(key, merge(), 0.7)[1]
 end
 
 -- TODO redo this, if the commands store their own aliases we can simplify the help system even more
@@ -130,15 +131,15 @@ end
 ---@type handler
 local function show_help(msg, args)
     if not args.command then
-        for _, line in pairs(wrap(map(help:list()), max_width)) do
+        for _, line in pairs(wrap(map(help:list()))) do
             msg:say(line)
         end
 
-        for _, line in pairs(wrap(map_flat(store:load("commands")), max_width)) do
+        for _, line in pairs(wrap(map_flat(store:load("commands")))) do
             msg:say(line)
         end
 
-        for _, line in pairs(wrap(map_flat(store:load("aliases")), max_width)) do
+        for _, line in pairs(wrap(map_flat(store:load("aliases")))) do
             msg:say(line)
         end
         return

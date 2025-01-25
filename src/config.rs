@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use mlua::LuaSerdeExt as _;
+use mlua::{IntoLua, LuaSerdeExt as _};
+
+use crate::GlobalItem;
 
 #[derive(Clone, Default)]
 pub struct Secret<T>(T);
@@ -28,7 +30,7 @@ impl std::fmt::Debug for Secret<String> {
     }
 }
 
-#[derive(Clone, Debug, Default, serde::Deserialize)]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Paths {
     #[serde(default)]
     pub data: PathBuf,
@@ -68,24 +70,24 @@ pub struct Twitch {
     pub client_secret: Secret<String>,
 }
 
-#[derive(Default, Clone, Debug, serde::Deserialize)]
+#[derive(Default, Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Github {
     #[serde(default)]
     pub settings_gist_id: String,
 
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub oauth_token: Secret<String>,
 }
 
-#[derive(Clone, Debug, serde::Deserialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Config {
     #[serde(default)]
     pub paths: Paths,
 
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub twitch: Twitch,
 
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     pub spotify: Spotify,
 
     #[serde(default)]
@@ -229,4 +231,14 @@ impl Config {
 
         Ok(config)
     }
+}
+
+impl IntoLua for &Config {
+    fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
+        lua.to_value(self)
+    }
+}
+
+impl GlobalItem for &Config {
+    const MODULE: &'static str = "config";
 }

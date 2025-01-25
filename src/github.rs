@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use mlua::{IntoLua, UserData};
 
+use crate::GlobalItem;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("Http error: {0}")]
@@ -10,6 +12,10 @@ pub enum Error {
 
 pub struct Client {
     bearer_token: String,
+}
+
+impl GlobalItem for Client {
+    const MODULE: &'static str = "github";
 }
 
 impl UserData for Client {

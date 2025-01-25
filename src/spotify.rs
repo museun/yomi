@@ -8,7 +8,7 @@ use std::{
 use mlua::{FromLua, IntoLua, LuaSerdeExt, UserData};
 use url::Url;
 
-use crate::time::TimeSpan;
+use crate::{sql::DbError, time::TimeSpan, GlobalItem, ResultExt};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -89,6 +89,10 @@ pub struct Client {
     session: Arc<Mutex<attohttpc::Session>>,
 }
 
+impl GlobalItem for Client {
+    const MODULE: &'static str = "spotify";
+}
+
 impl UserData for Client {
     fn add_methods<M>(methods: &mut M)
     where
@@ -113,18 +117,12 @@ impl UserData for Client {
             Ok(this.skip_song().ok().unwrap_or(false))
         });
 
-        methods.add_method("search", |lua, this, query: String| {
-            match this.search(&query) {
-                Ok(list) => Ok((Some(list), None)),
-                Err(err) => Ok((None, Some(err.to_string()))),
-            }
+        methods.add_method("search", |_lua, this, query: String| {
+            this.search(&query).into_lua_tuple()
         });
 
         methods.add_function("parse", |_lua, input: String| {
-            match SpotifyUrn::try_from(input.as_str()) {
-                Ok(urn) => Ok((Some(urn), None)),
-                Err(err) => Ok((None, Some(err.to_string()))),
-            }
+            SpotifyUrn::try_from(input.as_str()).into_lua_tuple()
         });
 
         methods.add_method("add_to_queue", |_lua, this, input: SpotifyUrn| {
@@ -134,10 +132,7 @@ impl UserData for Client {
                 _ => {}
             };
 
-            match this.lookup_by_urn(&input) {
-                Ok(item) => Ok((Some(item), None)),
-                Err(err) => Ok((None, Some(err.to_string()))),
-            }
+            this.lookup_by_urn(&input).into_lua_tuple()
         });
     }
 }
@@ -409,6 +404,10 @@ mod spotify_duration {
 
 pub struct SpotifyHistory(PathBuf);
 
+impl GlobalItem for SpotifyHistory {
+    const MODULE: &'static str = "spotify_history";
+}
+
 impl SpotifyHistory {
     pub fn new(path: impl Into<PathBuf>) -> Self {
         Self(path.into())
@@ -457,15 +456,6 @@ impl UserData for SpotifyHistory {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-enum HistoryError {
-    #[error("cannot open db: {0}")]
-    CannotOpenDb(String),
-
-    #[error("sql error: {0}")]
-    Sql(#[from] rusqlite::Error),
-}
-
 struct History {
     conn: rusqlite::Connection,
 }
@@ -481,46 +471,45 @@ macro_rules! include_sql {
 }
 
 impl History {
-    const SCHEMA: &str = include_sql!("schema");
-    const PUSH: &str = include_sql!("push");
-    const REMOVE: &str = include_sql!("remove");
-    const REMOVE_ALL: &str = include_sql!("remove_all");
-    const COUNT: &str = include_sql!("count");
-    const CLEAR: &str = include_sql!("clear");
-    const ALL: &str = include_sql!("all");
-    const LAST: &str = include_sql!("last");
-
-    fn open(path: impl AsRef<Path>) -> Result<Self, HistoryError> {
+    fn open(path: impl AsRef<Path>) -> Result<Self, DbError> {
+        static SCHEMA: &str = include_sql!("schema");
         let conn = rusqlite::Connection::open(path)
-            .map_err(|err| HistoryError::CannotOpenDb(err.to_string()))?;
-        conn.execute(Self::SCHEMA, [])?;
+            .map_err(|err| DbError::CannotOpenDb(err.to_string()))?;
+        conn.execute(SCHEMA, [])?;
         Ok(Self { conn })
     }
 
-    fn push(&self, key: &str, data: &Item) -> Result<usize, HistoryError> {
+    fn push(&self, key: &str, data: &Item) -> Result<usize, DbError> {
+        static PUSH: &str = include_sql!("push");
         let value = serde_json::to_value(data).expect("valid shape");
         let params = rusqlite::params![key, value, key];
-        Ok(self.conn.execute(Self::PUSH, params)?)
+        Ok(self.conn.execute(PUSH, params)?)
     }
 
-    fn remove(&self, key: &str) -> Result<usize, HistoryError> {
-        Ok(self.conn.execute(Self::REMOVE, [key])?)
+    fn remove(&self, key: &str) -> Result<usize, DbError> {
+        static REMOVE: &str = include_sql!("remove");
+        Ok(self.conn.execute(REMOVE, [key])?)
     }
 
-    fn remove_all(&self, key: &str) -> Result<usize, HistoryError> {
-        Ok(self.conn.execute(Self::REMOVE_ALL, [key])?)
+    fn remove_all(&self, key: &str) -> Result<usize, DbError> {
+        static REMOVE_ALL: &str = include_sql!("remove_all");
+        Ok(self.conn.execute(REMOVE_ALL, [key])?)
     }
 
-    fn clear(&self) -> Result<usize, HistoryError> {
-        Ok(self.conn.execute(Self::CLEAR, [])?)
+    fn clear(&self) -> Result<usize, DbError> {
+        static CLEAR: &str = include_sql!("clear");
+
+        Ok(self.conn.execute(CLEAR, [])?)
     }
 
-    fn count(&self, key: &str) -> Result<usize, HistoryError> {
-        Ok(self.conn.query_row(Self::COUNT, [key], |row| row.get(0))?)
+    fn count(&self, key: &str) -> Result<usize, DbError> {
+        static COUNT: &str = include_sql!("count");
+        Ok(self.conn.query_row(COUNT, [key], |row| row.get(0))?)
     }
 
-    fn all(&self) -> Result<Vec<Item>, HistoryError> {
-        let mut stmt = self.conn.prepare(Self::ALL)?;
+    fn all(&self) -> Result<Vec<Item>, DbError> {
+        static ALL: &str = include_sql!("all");
+        let mut stmt = self.conn.prepare(ALL)?;
         let query = stmt
             .query_map([], |row| {
                 let value = row.get("value")?;
@@ -530,8 +519,9 @@ impl History {
         query.collect()
     }
 
-    fn last_n(&self, n: usize) -> Result<Vec<Item>, HistoryError> {
-        let mut stmt = self.conn.prepare(Self::LAST)?;
+    fn last_n(&self, n: usize) -> Result<Vec<Item>, DbError> {
+        static LAST: &str = include_sql!("last");
+        let mut stmt = self.conn.prepare(LAST)?;
         let query = stmt
             .query_map([n], |row| {
                 let value = row.get("value")?;
@@ -541,8 +531,9 @@ impl History {
         query.collect()
     }
 
-    fn last(&self) -> Result<Option<Item>, HistoryError> {
-        let mut stmt = self.conn.prepare(Self::LAST)?;
+    fn last(&self) -> Result<Option<Item>, DbError> {
+        static LAST: &str = include_sql!("last");
+        let mut stmt = self.conn.prepare(LAST)?;
         let result = stmt.query_row([1], |row| {
             let value = row.get("value")?;
             Ok(serde_json::from_value(value).expect("valid shape"))
@@ -552,22 +543,5 @@ impl History {
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(err) => Err(err.into()),
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn search() {
-        simple_env_load::load_env_from([".dev.env", ".secrets.env"]);
-
-        let client_id = std::env::var("SHAKEN_SPOTIFY_CLIENT_ID").unwrap();
-        let client_secret = std::env::var("SHAKEN_SPOTIFY_CLIENT_SECRET").unwrap();
-        let refresh_token = std::env::var("SHAKEN_SPOTIFY_REFRESH_TOKEN").unwrap();
-
-        let client = Client::new(client_id, client_secret, refresh_token).unwrap();
-        let s = client.search("kanashiki heaven").unwrap();
-        eprintln!("{s:#?}");
     }
 }

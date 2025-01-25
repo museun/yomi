@@ -1,6 +1,6 @@
 use yomi::{
-    irc, Config, GithubClient, HelixClient, Manifest, Responder, ResponderChannel, SpotifyClient,
-    SpotifyHistory, Watcher,
+    irc, Aliases, Config, EmoteMap, GithubClient, GlobalItem, Globals, HelixClient, Manifest,
+    SpotifyClient, SpotifyHistory, Watcher,
 };
 
 enum Next {
@@ -18,13 +18,24 @@ fn handle_fs_event(
     if ev.is_err() {
         return Next::Quit;
     }
-    match Manifest::read_init_lua(&manifest.init) {
-        Ok(data) => {
-            if let Err(err) = manifest.load(lua, &data) {
+
+    let data = loop {
+        let data = match std::fs::read_to_string(&manifest.init) {
+            Ok(data) => data,
+            Err(err) => {
                 log::error!("{err}");
+                return Next::Continue;
             }
+        };
+        if !data.trim().is_empty() {
+            break data;
         }
-        Err(err) => log::error!("cannot read init.lua: {err}"),
+        std::hint::spin_loop();
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    };
+
+    if let Err(err) = manifest.load(lua, &data) {
+        log::error!("{err}");
     }
 
     Next::Continue
@@ -54,38 +65,51 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.twitch.clone(), //
         responses,
     );
+    let responder = yomi::Responder::new(sender);
 
-    let (reroute_tx, reroute) = flume::unbounded();
-
-    let responder = ResponderChannel::new(sender);
     let watcher = Watcher::new(&config.paths.scripts);
 
-    let data = Manifest::read_init_lua(config.paths.scripts.join("init.lua"))?;
-    Manifest::set_responder(&lua, responder.clone())?;
+    let helix = HelixClient::new(
+        &config.twitch.client_id, //
+        &config.twitch.client_secret,
+    )?;
+    let emote_map = EmoteMap::fetch_emotes(&helix)?;
 
-    let helix = HelixClient::new(&config.twitch.client_id, &config.twitch.client_secret)?;
     let github = GithubClient::new(&config.github.oauth_token);
+
     let spotify = SpotifyClient::new(
         &config.spotify.client_id,
         &*config.spotify.client_secret,
         &*config.spotify.refresh_token,
     )?;
-    SpotifyClient::listen_for_changes(&spotify, config.paths.data.join("spotify.db"));
+    SpotifyClient::listen_for_changes(&spotify, config.paths.data.join("spotify_history.db"));
 
-    let spotify_history = SpotifyHistory::new(config.paths.data.join("spotify.db"));
+    let (reroute_tx, reroute) = flume::unbounded();
 
-    let mut manifest = Manifest::initialize(
-        &lua,
-        &config.paths.scripts,
-        &config.paths.data,
-        &data,
-        &config.github.settings_gist_id,
-        reroute_tx,
-        github,
-        helix,
-        spotify,
-        spotify_history,
-    )?;
+    Globals::new(&lua)
+        .register(&config)?
+        .register(yomi::LoadedModules)?
+        .register(yomi::Logger)?
+        .register(yomi::Regexp)?
+        .register(yomi::Json)?
+        .register(yomi::Store::new(&config.paths.data))?
+        .register(yomi::Bot::new(reroute_tx))?
+        .register(yomi::Rando::new())?
+        .register(yomi::Handled::Sink)?
+        .register(yomi::fuzzy::Search)?
+        .register(yomi::crates::Crates)?
+        .register(responder.clone())?
+        .register(helix)?
+        .register(emote_map)?
+        .register(github)?
+        .register(spotify)?
+        .register(SpotifyHistory::new(
+            config.paths.data.join("spotify_history.db"),
+        ))?
+        .register(Aliases::new(config.paths.data.join("aliases.db")))?;
+
+    let data = std::fs::read_to_string(config.paths.scripts.join("init.lua"))?;
+    let mut manifest = Manifest::initialize(&lua, &config.paths.scripts, &data)?;
 
     let mut our_user = irc::User::default();
 
@@ -112,7 +136,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match event {
             irc::Event::Connected { user } => {
                 our_user = user;
-                lua.globals().set("BOT_USER", &our_user)?;
+                our_user.register(Globals::new(&lua))?;
 
                 for channel in &config.twitch.channels {
                     responder.send(irc::Response::Join {

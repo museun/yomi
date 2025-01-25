@@ -1,6 +1,6 @@
 ---@type handler
 local function lookup_crate(msg, args)
-    local crate = crates(args.crate_name) or nil
+    local crate = crates.lookup(args.crate_name) or nil
 
     if crate then
         msg:say(string.format("%s = %s | last updated %s",

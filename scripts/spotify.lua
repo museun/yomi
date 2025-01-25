@@ -1,5 +1,3 @@
-local song_request = store:load("spotify") or {}
-
 local function get_link(item)
     return string.format("https://open.spotify.com/track/%s", item.id)
 end
@@ -104,6 +102,7 @@ local request = {
     args = "<song>",
     help = "requests a song to be played on spotify",
     handler = function(msg, args)
+        local song_request = store:load("spotify") or {}
         if not song_request.enabled then
             msg:reply("song request is not enabled")
             return
@@ -136,6 +135,7 @@ local toggle = {
     help = "enables or disables song request",
     elevated = true,
     handler = function(msg, args)
+        local song_request = store:load("spotify") or {}
         if args.mode then
             if args.mode == "on" then
                 song_request.enabled = true
@@ -162,6 +162,7 @@ local status = {
     command = "!spotify-state",
     help = "gets the song request mode state",
     handler = function(msg, args)
+        local song_request = store:load("spotify") or {}
         local out
         if song_request.enabled then
             out = "on"

@@ -1,9 +1,19 @@
 use mlua::UserData;
 
+use crate::GlobalItem;
+
 pub struct Rando(fastrand::Rng);
 
+impl GlobalItem for Rando {
+    const MODULE: &'static str = "rand";
+}
+
 impl Rando {
-    pub fn new(rng: fastrand::Rng) -> Self {
+    pub fn new() -> Self {
+        Self(fastrand::Rng::new())
+    }
+
+    pub const fn with(rng: fastrand::Rng) -> Self {
         Self(rng)
     }
 }

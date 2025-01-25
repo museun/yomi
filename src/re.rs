@@ -1,5 +1,7 @@
 use mlua::UserData;
 
+use crate::GlobalItem;
+
 pub struct RePattern(regex::Regex);
 impl UserData for RePattern {
     fn add_methods<M>(methods: &mut M)
@@ -12,8 +14,13 @@ impl UserData for RePattern {
     }
 }
 
-pub struct Regex;
-impl UserData for Regex {
+pub struct Regexp;
+
+impl GlobalItem for Regexp {
+    const MODULE: &'static str = "re";
+}
+
+impl UserData for Regexp {
     fn add_methods<M>(methods: &mut M)
     where
         M: mlua::UserDataMethods<Self>,

@@ -1,26 +1,53 @@
-pub trait Search {
+use mlua::UserData;
+
+use crate::GlobalItem;
+
+pub trait Fuzzy {
     fn as_str(&self) -> &str;
 }
 
-impl<T: Search> Search for &T {
+impl<T: Fuzzy> Fuzzy for &T {
     fn as_str(&self) -> &str {
-        <T as Search>::as_str(self)
+        <T as Fuzzy>::as_str(self)
     }
 }
 
-impl Search for str {
-    fn as_str(&self) -> &str {
-        self
-    }
-}
-
-impl Search for String {
+impl Fuzzy for str {
     fn as_str(&self) -> &str {
         self
     }
 }
 
-pub fn closest<'a, T: Search>(
+impl Fuzzy for String {
+    fn as_str(&self) -> &str {
+        self
+    }
+}
+
+pub struct Search;
+impl GlobalItem for Search {
+    const MODULE: &'static str = "fuzzy";
+}
+
+impl UserData for Search {
+    fn add_methods<M>(methods: &mut M)
+    where
+        M: mlua::UserDataMethods<Self>,
+    {
+        methods.add_function(
+            "closest",
+            |_lua, (input, data, tolerance): (String, Vec<String>, Option<f32>)| {
+                let data = data.iter().collect::<Vec<&String>>();
+                let out = self::closest(&input, data, tolerance.unwrap_or(0.5));
+                let owned = out.into_iter().map(ToString::to_string);
+                let owned = owned.collect::<Vec<_>>();
+                Ok(owned)
+            },
+        );
+    }
+}
+
+pub fn closest<'a, T: Fuzzy>(
     input: &str,
     data: impl IntoIterator<Item = T> + 'a,
     tolerance: f32,

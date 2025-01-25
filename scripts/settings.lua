@@ -4,11 +4,11 @@
 ---@field theme_variant string
 ---@field theme_url string
 
+local settings_gist_id <const> = config.github.settings_gist_id;
+
 ---@return Settings|boolean
 local function get_current_settings(msg)
-    local gists = github:get_gist_files(
-        SETTINGS_GIST_ID
-    ) or nil
+    local gists = github:get_gist_files(settings_gist_id) or nil
     local settings = gists["vscode settings.json"] or nil
     if not settings then
         msg:reply("cannot get the current settings :(")

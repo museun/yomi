@@ -1,4 +1,4 @@
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{future::Future, time::Duration};
 
 use mlua::{AnyUserData, FromLua, IntoLua};
 use serde::de::Error;
@@ -12,7 +12,7 @@ use twitch_message::{
     IntoStatic, PingTracker,
 };
 
-use crate::{config::Twitch, responder::Responder};
+use crate::{config::Twitch, responder::Responder, GlobalItem};
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Response {
@@ -71,7 +71,7 @@ impl IntoLua for &Message {
         let responder = lua
             .globals()
             .get::<AnyUserData>("_RESPONDER")?
-            .borrow::<Arc<dyn Responder>>()?;
+            .borrow::<Responder>()?;
 
         // this could just be a global lua function `irc.say(msg, data)` and `irc.reply(msg, data)`
         table.set("_responder", AnyUserData::wrap(responder.clone()))?;
@@ -136,6 +136,10 @@ pub struct User {
     pub name: String,
     pub display: String,
     pub user_id: String,
+}
+
+impl GlobalItem for &User {
+    const MODULE: &'static str = "BOT_USER";
 }
 
 impl IntoLua for &User {

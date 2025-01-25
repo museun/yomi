@@ -1,6 +1,6 @@
 use mlua::IntoLua;
 
-use crate::manifest::Mapping;
+use crate::Mapping;
 
 struct Help {
     command: String,
