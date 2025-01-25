@@ -10,7 +10,11 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("trace", |_lua, _this, value: mlua::Value| {
-            log::trace!(target: "lua", "{value:#?}");
+            if let Some(str) = value.as_str() {
+                log::trace!(target: "lua", "{str}");
+            } else {
+                log::trace!(target: "lua", "{value:#?}");
+            }
             Ok(())
         });
 
@@ -19,7 +23,11 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("debug", |_lua, _this, value: mlua::Value| {
-            log::debug!(target: "lua", "{value:#?}");
+            if let Some(str) = value.as_str() {
+                log::debug!(target: "lua", "{str}");
+            } else {
+                log::debug!(target: "lua", "{value:#?}");
+            }
             Ok(())
         });
 
@@ -28,7 +36,11 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("info", |_lua, _this, value: mlua::Value| {
-            log::info!(target: "lua", "{value:#?}");
+            if let Some(str) = value.as_str() {
+                log::info!(target: "lua", "{str}");
+            } else {
+                log::info!(target: "lua", "{value:#?}");
+            }
             Ok(())
         });
 
@@ -37,7 +49,11 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("warn", |_lua, _this, value: mlua::Value| {
-            log::warn!(target: "lua", "{value:#?}");
+            if let Some(str) = value.as_str() {
+                log::warn!(target: "lua", "{str}");
+            } else {
+                log::warn!(target: "lua", "{value:#?}");
+            }
             Ok(())
         });
 
@@ -46,7 +62,11 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("error", |_lua, _this, value: mlua::Value| {
-            log::error!(target: "lua", "{value:#?}");
+            if let Some(str) = value.as_str() {
+                log::error!(target: "lua", "{str}");
+            } else {
+                log::error!(target: "lua", "{value:#?}");
+            }
             Ok(())
         });
     }
