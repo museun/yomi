@@ -26,9 +26,14 @@ local alias = {
 
 local function redirect(msg)
     local pattern <const> = "^(,%S+)(.*)$"
+
     local head, tail = msg.data:match(pattern)
+    head = head or msg.data
+    tail = tail or ""
+
     local item = aliases[head]
     if item ~= nil then
+        log:info(string.format("redirecting %s to %s", head, item))
         bot:reroute_command(msg, item .. tail)
         return Handled.sink
     end
