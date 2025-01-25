@@ -10,6 +10,7 @@ local function contains(table, value)
     return false
 end
 
+---@type listener
 local function greet_user(msg)
     if contains(greetings, msg.data) then
         local greeting = rand:choose(greetings) or "hello"

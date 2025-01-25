@@ -2,6 +2,7 @@
 
 ---@alias json string
 ---@alias handler fun(msg: Message, args: {}?): nil A message handler
+---@alias listener fun(msg: Message): Handled A message handler
 
 ---@class config The public read-only bot configuration
 config = {
@@ -90,6 +91,14 @@ Spotify = {}
 ---@field listeners (fun(msg: Message): Handled)[] Passive listeners
 Manifest = {}
 
+---@enum UserClass
+UserClass = {
+    user = 0,
+    vip = 1,
+    moderator = 2,
+    broadcaster = 3,
+}
+
 ---@class Message
 ---@field our_user   string The bot's user name
 ---@field our_id     string The bot's user id
@@ -99,7 +108,7 @@ Manifest = {}
 ---@field sender     string The sender of this message
 ---@field sender_id  string The Twitch ID for the sender
 ---@field data       string The text sent by the user
----@field elevated   boolean The message was from an elevated user
+---@field class      UserClass  The class of the user
 ---@field say fun(msg: Message, data: string): nil Send a message in response
 ---@field reply fun(msg: Message, data: string): nil Reply to user from a message
 Message = {}

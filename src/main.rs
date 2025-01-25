@@ -1,5 +1,6 @@
 use yomi::{
-    irc, Aliases, Config, EmoteMap, GithubClient, GlobalItem, Globals, HelixClient, Manifest,
+    irc::{self, MessageClass},
+    Aliases, Config, EmoteMap, GithubClient, GlobalItem, Globals, HelixClient, Manifest,
     SpotifyClient, SpotifyHistory, Watcher,
 };
 
@@ -157,9 +158,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     sender: msg.sender.to_string(),
                     sender_id: msg.user_id().expect("attached user-id").to_string(),
                     data: msg.data.to_string(),
-                    elevated: msg.is_from_vip()
-                        || msg.is_from_moderator()
-                        || msg.is_from_broadcaster(),
+                    class: MessageClass::classify(&msg),
                 };
                 manifest.dispatch(msg, &lua, &responder)
             }

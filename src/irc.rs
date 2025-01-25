@@ -45,11 +45,67 @@ pub struct Message {
     pub sender: String,
     pub sender_id: String,
     pub data: String,
-    pub elevated: bool,
+    pub class: MessageClass,
 }
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, PartialOrd)]
+pub enum MessageClass {
+    #[default]
+    User,
+    Vip,
+    Moderator,
+    Broadcaster,
+}
+
+impl MessageClass {
+    pub fn classify(msg: &Privmsg) -> Self {
+        match (
+            msg.is_from_broadcaster(),
+            msg.is_from_moderator(),
+            msg.is_from_vip(),
+        ) {
+            (true, _, _) => Self::Broadcaster,
+            (_, true, _) => Self::Moderator,
+            (_, _, true) => Self::Vip,
+            _ => Self::User,
+        }
+    }
+}
+
+impl IntoLua for MessageClass {
+    fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
+        lua.create_any_userdata(self).map(mlua::Value::UserData)
+    }
+}
+
+impl FromLua for MessageClass {
+    fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> mlua::Result<Self> {
+        Ok(*value
+            .as_userdata()
+            .map(|c| c.borrow::<Self>())
+            .expect("user-data")?)
+    }
+}
+
 impl Message {
+    pub const fn is_from_broadcaster(&self) -> bool {
+        matches!(self.class, MessageClass::Broadcaster)
+    }
+
+    pub const fn is_from_moderator(&self) -> bool {
+        matches!(self.class, MessageClass::Moderator)
+    }
+
+    pub const fn is_from_vip(&self) -> bool {
+        matches!(self.class, MessageClass::Vip)
+    }
+
+    pub const fn is_from_user(&self) -> bool {
+        matches!(self.class, MessageClass::User)
+    }
+
     pub const fn is_elevated(&self) -> bool {
-        self.elevated
+        self.is_from_broadcaster() || self.is_from_moderator() || self.is_from_vip()
     }
 }
 
@@ -66,7 +122,7 @@ impl IntoLua for &Message {
             ("data", &*self.data),
         ])?;
 
-        table.set("elevated", self.elevated)?;
+        table.set("class", self.class)?;
 
         let responder = lua
             .globals()
@@ -76,17 +132,12 @@ impl IntoLua for &Message {
         // this could just be a global lua function `irc.say(msg, data)` and `irc.reply(msg, data)`
         table.set("_responder", AnyUserData::wrap(responder.clone()))?;
 
-        // BUG where is `msg:error`?
         table.set(
             "reply",
             lua.create_function({
                 let responder = responder.clone();
                 move |_lua, (this, data): (Message, String)| {
-                    responder.send(Response::Reply {
-                        channel: this.channel.to_string(),
-                        msg_id: this.msg_id.to_string(),
-                        data,
-                    });
+                    responder.reply(&this, data);
                     Ok(())
                 }
             })?,
@@ -97,20 +148,58 @@ impl IntoLua for &Message {
             lua.create_function({
                 let responder = responder.clone();
                 move |_lua, (this, data): (Message, String)| {
-                    responder.send(Response::Say {
-                        channel: this.channel.to_string(),
-                        data,
-                    });
+                    responder.say(&this, data);
                     Ok(())
                 }
             })?,
+        )?;
+
+        table.set(
+            "error",
+            lua.create_function({
+                let responder = responder.clone();
+                move |_lua, (this, data): (Message, String)| {
+                    responder.error(&this, data);
+                    Ok(())
+                }
+            })?,
+        )?;
+
+        table.set(
+            "error",
+            lua.create_function({
+                let responder = responder.clone();
+                move |_lua, (this, data): (Message, String)| {
+                    responder.error(&this, data);
+                    Ok(())
+                }
+            })?,
+        )?;
+
+        table.set(
+            "is_from_broadcaster",
+            lua.create_function(move |_lua, this: Message| Ok(this.is_from_broadcaster()))?,
+        )?;
+
+        table.set(
+            "is_from_moderator",
+            lua.create_function(move |_lua, this: Message| Ok(this.is_from_moderator()))?,
+        )?;
+
+        table.set(
+            "is_from_user",
+            lua.create_function(move |_lua, this: Message| Ok(this.is_from_user()))?,
+        )?;
+
+        table.set(
+            "is_elevated",
+            lua.create_function(move |_lua, this: Message| Ok(this.is_elevated()))?,
         )?;
 
         Ok(mlua::Value::Table(table))
     }
 }
 
-// why do we need fromlua?
 impl FromLua for Message {
     fn from_lua(value: mlua::Value, _lua: &mlua::Lua) -> mlua::Result<Self> {
         let table = value
@@ -126,7 +215,7 @@ impl FromLua for Message {
             sender: table.get("sender")?,
             sender_id: table.get("sender_id")?,
             data: table.get("data")?,
-            elevated: table.get("elevated")?,
+            class: table.get("class")?,
         })
     }
 }
