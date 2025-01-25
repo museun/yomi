@@ -42,7 +42,7 @@ impl Manifest {
             .set("path", scripts.join("?.lua"))?;
 
         let mut this = Self {
-            init: scripts.join("init.lua"),
+            init: scripts.join("init").with_extension("lua"),
             commands: vec![],
             listeners: vec![],
         };

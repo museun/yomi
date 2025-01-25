@@ -82,7 +82,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &*config.spotify.client_secret,
         &*config.spotify.refresh_token,
     )?;
-    SpotifyClient::listen_for_changes(&spotify, config.paths.data.join("spotify_history.db"));
+
+    let spotify_history_db = config.paths.data("spotify_history").with_extension("db");
+    SpotifyClient::listen_for_changes(&spotify, &spotify_history_db);
+
+    let aliases_db = config.paths.data("aliases").with_extension("db");
 
     let (reroute_tx, reroute) = flume::unbounded();
 
@@ -103,12 +107,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .register(emote_map)?
         .register(github)?
         .register(spotify)?
-        .register(SpotifyHistory::new(
-            config.paths.data.join("spotify_history.db"),
-        ))?
-        .register(Aliases::new(config.paths.data.join("aliases.db")))?;
+        .register(SpotifyHistory::new(spotify_history_db))?
+        .register(Aliases::new(aliases_db))?;
 
-    let data = std::fs::read_to_string(config.paths.scripts.join("init.lua"))?;
+    let data = std::fs::read_to_string(config.paths.script("init"))?;
     let mut manifest = Manifest::initialize(&lua, &config.paths.scripts, &data)?;
 
     let mut our_user = irc::User::default();

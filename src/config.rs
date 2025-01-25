@@ -39,6 +39,16 @@ pub struct Paths {
     pub scripts: PathBuf,
 }
 
+impl Paths {
+    pub fn script(&self, script: impl AsRef<Path>) -> PathBuf {
+        self.scripts.join(script).with_extension("lua")
+    }
+
+    pub fn data(&self, path: impl AsRef<Path>) -> PathBuf {
+        self.data.join(path)
+    }
+}
+
 #[derive(Default, Clone, Debug, serde::Deserialize)]
 pub struct Spotify {
     #[serde(default)]

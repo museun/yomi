@@ -156,8 +156,9 @@ impl Client {
         })
     }
 
-    pub fn listen_for_changes(this: &Self, path: PathBuf) {
+    pub fn listen_for_changes(this: &Self, path: impl Into<PathBuf>) {
         std::thread::spawn({
+            let path = path.into();
             let this = this.clone();
             move || {
                 let mut backoff = 10;
