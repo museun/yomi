@@ -50,14 +50,14 @@ impl UserData for Store {
         methods.add_method(
             "set",
             |_lua, this, (ns, key, value): (String, String, mlua::Value)| {
-                let db = KvSqlStore::open(&this.dir.join(ns).with_extension("db"))
+                let db = KvSqlStore::open(this.dir.join(ns).with_extension("db"))
                     .map_err(mlua::Error::external)?;
                 db.set(&key, value).map_err(mlua::Error::external)
             },
         );
 
         methods.add_method("get", |lua, this, (ns, key): (String, String)| {
-            let db = KvSqlStore::open(&this.dir.join(ns).with_extension("db"))
+            let db = KvSqlStore::open(this.dir.join(ns).with_extension("db"))
                 .map_err(mlua::Error::external)?;
             match db.get(&key) {
                 Ok(val) => match lua.to_value(&val) {
@@ -70,7 +70,7 @@ impl UserData for Store {
         });
 
         methods.add_method("remove", |_lua, this, (ns, key): (String, String)| {
-            let db = KvSqlStore::open(&this.dir.join(ns).with_extension("db"))
+            let db = KvSqlStore::open(this.dir.join(ns).with_extension("db"))
                 .map_err(mlua::Error::external)?;
             match db.remove(&key) {
                 Ok(val) => Ok(val),

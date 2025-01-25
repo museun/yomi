@@ -26,15 +26,18 @@ impl UserData for Responder {
         M: mlua::UserDataMethods<Self>,
     {
         methods.add_method("say", |_lua, this, (msg, data): (Message, String)| {
-            Ok(this.say(&msg, data))
+            this.say(&msg, data);
+            Ok(())
         });
 
         methods.add_method("reply", |_lua, this, (msg, data): (Message, String)| {
-            Ok(this.reply(&msg, data))
+            this.reply(&msg, data);
+            Ok(())
         });
 
         methods.add_method("error", |_lua, this, (msg, data): (Message, String)| {
-            Ok(this.error(&msg, data))
+            this.error(&msg, data);
+            Ok(())
         });
     }
 }

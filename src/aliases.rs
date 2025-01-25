@@ -88,7 +88,7 @@ impl AliasesDb {
         static CONTAINS: &str = include_sql!("contains");
         match self
             .conn
-            .query_row(CONTAINS, [query, query], |row| Ok(row.get(0)?))
+            .query_row(CONTAINS, [query, query], |row| row.get(0))
         {
             Ok(value) => Ok(value),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
@@ -100,13 +100,13 @@ impl AliasesDb {
         static RESOLVE: &str = include_sql!("resolve");
         Ok(self
             .conn
-            .query_row(RESOLVE, [query], |row| Ok(row.get("command")?))?)
+            .query_row(RESOLVE, [query], |row| row.get("command"))?)
     }
 
     fn get_aliases(&self, command: &str) -> Vec<String> {
         static GET_ALIASES: &str = include_sql!("get_aliases");
         let mut stmt = self.conn.prepare(GET_ALIASES).expect("valid sql");
-        let query = stmt.query_map([command], |row| Ok(row.get("alias")?));
+        let query = stmt.query_map([command], |row| row.get("alias"));
         let Ok(iter) = query else { return vec![] };
         iter.flatten().collect()
     }

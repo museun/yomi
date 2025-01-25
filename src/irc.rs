@@ -79,7 +79,7 @@ impl IntoLua for MessageClass {
 }
 
 impl FromLua for MessageClass {
-    fn from_lua(value: mlua::Value, lua: &mlua::Lua) -> mlua::Result<Self> {
+    fn from_lua(value: mlua::Value, _lua: &mlua::Lua) -> mlua::Result<Self> {
         Ok(*value
             .as_userdata()
             .map(|c| c.borrow::<Self>())

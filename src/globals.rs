@@ -17,7 +17,7 @@ impl<'a> Globals<'a> {
     }
 }
 
-impl<'a> Globals<'a> {
+impl Globals<'_> {
     pub fn register(self, item: impl GlobalItem) -> mlua::Result<Self> {
         item.register(self).map(|_| self)
     }
