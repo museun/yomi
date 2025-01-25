@@ -1,3 +1,5 @@
+// TODO simple timestamp (for durations)
+
 pub trait FormatTime {
     fn as_readable_time(&self) -> String;
     fn as_fuzzy_time(&self) -> String {

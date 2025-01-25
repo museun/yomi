@@ -70,6 +70,7 @@ local function find_nearest(key)
     return fuzzy(key, merge(), 0.7)[1]
 end
 
+-- TODO redo this, if the commands store their own aliases we can simplify the help system even more
 local function lookup(msg, key)
     local value = help:lookup(key)
     if value ~= nil then
