@@ -95,7 +95,6 @@ impl UserData for Client {
     {
         methods.add_method("get_stream", |lua, this, name: String| {
             let name = name.strip_prefix('#').unwrap_or(&name);
-            // TODO Ok((Option, Option)) so local ok, err = func() will work
             let mut list = this.get_streams([name]).map_err(mlua::Error::external)?;
             let item = match list.len() {
                 0 => return Ok(mlua::Value::Nil),
@@ -106,7 +105,6 @@ impl UserData for Client {
         });
 
         methods.add_method("get_emotes_for", |_lua, this, broadcaster_id: String| {
-            // TODO Ok((Option, Option)) so local ok, err = func() will work
             let (_, emotes) = this
                 .get_emotes_for(&broadcaster_id)
                 .map_err(mlua::Error::external)?;

@@ -51,7 +51,8 @@ impl Mapping {
             None => mlua::Value::Nil,
         };
 
-        // TODO PartialOrd so we can see if this message matches what they specified as the minimum access level
+        // TODO PartialOrd so we can see if this message matches what they
+        // specified as the minimum access level
         if self.elevated && !msg.is_elevated() {
             responder.reply(msg, "you cannot do that command".to_string());
             return;

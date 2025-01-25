@@ -24,7 +24,6 @@ impl UserData for Client {
         M: mlua::UserDataMethods<Self>,
     {
         methods.add_method("get_gist_files", |_lua, this, id: String| {
-            // TODO Ok((Option, Option)) so local ok, err = func() will work
             this.get_gist_files(&id).map_err(mlua::Error::external)
         });
     }
