@@ -1,0 +1,4 @@
+select
+    key
+from
+    kv;

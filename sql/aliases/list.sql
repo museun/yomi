@@ -1,0 +1,9 @@
+select
+    command
+from
+    commands
+union
+select
+    alias
+from
+    aliases;

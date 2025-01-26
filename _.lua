@@ -33,8 +33,9 @@ fuzzy = {
     --- Does a fuzzy search for 'needle' in 'haystack' with a minimum tolerance
     ---@param needle string
     ---@param haystack string[]
-    ---@param tolerance number
-    closest = function(needle, haystack, tolerance) end,
+    ---@param case_insensitive boolean?
+    ---@return string?
+    closest = function(needle, haystack, case_insensitive) end,
 }
 
 ---@class Crate A crates.io crate
@@ -294,8 +295,12 @@ store = {
     --- Remove a value from the specified `ns` db
     ---@param ns string The database to use
     ---@param key string The key to use
-    ---@returns boolean
+    ---@return boolean
     remove = function(self, ns, key) end,
+    --- Get all of the keys for this `ns` db
+    ---@param ns string The database to use
+    ---@return string[]?
+    keys = function(self, ns) end,
 }
 
 json = {
@@ -412,4 +417,8 @@ aliases = {
     ---@param command string
     ---@return boolean,string?
     clear = function(self, command) end,
+    --- list all commands and aliases
+    ---@param aliases_only boolean
+    ---@return string[]?
+    list = function(self, aliases_only) end,
 }

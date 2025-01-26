@@ -31,6 +31,11 @@ impl UserData for Aliases {
             Ok(aliases.contains(&query).unwrap_or(false))
         });
 
+        methods.add_method("list", |_lua, this, aliases_only: Option<bool>| {
+            let aliases = AliasesDb::open(&this.0).map_err(mlua::Error::external)?;
+            Ok(aliases.list_all(aliases_only.unwrap_or(false)).ok())
+        });
+
         methods.add_method("resolve", |_lua, this, query: String| {
             let aliases = AliasesDb::open(&this.0).map_err(mlua::Error::external)?;
             aliases.resolve(&query).into_lua_tuple()
@@ -125,6 +130,20 @@ impl AliasesDb {
         static REMOVE_ALIAS: &str = include_sql!("remove_alias");
         let n = self.conn.execute(REMOVE_ALIAS, [alias])?;
         Ok(n > 0)
+    }
+
+    fn list_all(&self, aliases_only: bool) -> Result<Vec<String>, DbError> {
+        static LIST: &str = include_sql!("list");
+        static LIST_ALIASES: &str = include_sql!("list_aliases");
+        if aliases_only {
+            let mut stmt = self.conn.prepare(LIST_ALIASES).expect("valid sql");
+            let iter = stmt.query_map([], |row| row.get(0))?;
+            Ok(iter.flatten().collect())
+        } else {
+            let mut stmt = self.conn.prepare(LIST).expect("valid sql");
+            let iter = stmt.query_map([], |row| row.get(0))?;
+            Ok(iter.flatten().collect())
+        }
     }
 
     fn clear_aliases(&self, command: &str) -> Result<bool, DbError> {

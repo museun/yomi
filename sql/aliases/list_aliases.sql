@@ -1,0 +1,4 @@
+select
+    alias
+from
+    aliases;

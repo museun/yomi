@@ -1,0 +1,4 @@
+select
+    value
+from
+    kv;

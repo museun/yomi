@@ -47,6 +47,12 @@ impl UserData for Store {
             Ok(())
         });
 
+        methods.add_method("keys", |_lua, this, ns: String| {
+            let db = KvSqlStore::open(this.dir.join(ns).with_extension("db"))
+                .map_err(mlua::Error::external)?;
+            Ok(db.keys().ok())
+        });
+
         methods.add_method(
             "set",
             |_lua, this, (ns, key, value): (String, String, mlua::Value)| {
@@ -115,6 +121,13 @@ impl KvSqlStore {
         static GET: &str = include_sql!("get");
         let mut stmt = self.conn.prepare(GET)?;
         Ok(stmt.query_row([key], |row| row.get(0)).optional()?)
+    }
+
+    fn keys(&self) -> Result<Vec<String>, DbError> {
+        static KEYS: &str = include_sql!("keys");
+        let mut stmt = self.conn.prepare(KEYS)?;
+        let iter = stmt.query_map([], |row| row.get::<_, String>(0))?;
+        Ok(iter.flatten().collect())
     }
 
     fn remove(&self, key: &str) -> Result<bool, DbError> {
