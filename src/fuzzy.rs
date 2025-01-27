@@ -38,7 +38,7 @@ fn closest(query: &str, choices: &[String], case_insensitive: bool) -> Option<St
     choices
         .iter()
         .map(|s| {
-            let s = normalize(&s, case_insensitive);
+            let s = normalize(s, case_insensitive);
             (strsim::jaro_winkler(&query, &s), s)
         })
         .max_by(|(l, _), (r, _)| l.total_cmp(r))

@@ -96,12 +96,12 @@ macro_rules! include_sql {
     }};
 }
 
-struct KvSqlStore {
+pub struct KvSqlStore {
     conn: rusqlite::Connection,
 }
 
 impl KvSqlStore {
-    fn open(path: impl AsRef<Path>) -> Result<Self, DbError> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, DbError> {
         static SCHEMA: &str = include_sql!("schema");
         let conn = rusqlite::Connection::open(path)
             .map_err(|err| DbError::CannotOpenDb(err.to_string()))?;
@@ -110,27 +110,27 @@ impl KvSqlStore {
         Ok(Self { conn })
     }
 
-    fn set(&self, key: &str, value: impl serde::Serialize) -> Result<(), DbError> {
+    pub fn set(&self, key: &str, value: impl serde::Serialize) -> Result<(), DbError> {
         static SET: &str = include_sql!("set");
         let value = serde_json::to_value(value).expect("valid json");
         self.conn.execute(SET, rusqlite::params![key, value])?;
         Ok(())
     }
 
-    fn get(&self, key: &str) -> Result<Option<serde_json::Value>, DbError> {
+    pub fn get(&self, key: &str) -> Result<Option<serde_json::Value>, DbError> {
         static GET: &str = include_sql!("get");
         let mut stmt = self.conn.prepare(GET)?;
         Ok(stmt.query_row([key], |row| row.get(0)).optional()?)
     }
 
-    fn keys(&self) -> Result<Vec<String>, DbError> {
+    pub fn keys(&self) -> Result<Vec<String>, DbError> {
         static KEYS: &str = include_sql!("keys");
         let mut stmt = self.conn.prepare(KEYS)?;
         let iter = stmt.query_map([], |row| row.get::<_, String>(0))?;
         Ok(iter.flatten().collect())
     }
 
-    fn remove(&self, key: &str) -> Result<bool, DbError> {
+    pub fn remove(&self, key: &str) -> Result<bool, DbError> {
         static REMOVE: &str = include_sql!("remove");
         Ok(self.conn.execute(REMOVE, [key])? > 0)
     }

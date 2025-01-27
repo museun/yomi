@@ -1,6 +1,8 @@
+use std::path::PathBuf;
+
 use mlua::IntoLua;
 
-use crate::Mapping;
+use crate::{AliasesDb, KvSqlStore, Mapping};
 
 struct Help {
     command: String,
@@ -21,6 +23,8 @@ impl IntoLua for &Help {
 
 pub struct HelpProvider {
     list: Vec<Help>,
+    aliases_db: PathBuf,
+    commands_db: PathBuf,
 }
 
 impl mlua::UserData for HelpProvider {
@@ -28,6 +32,29 @@ impl mlua::UserData for HelpProvider {
     where
         M: mlua::UserDataMethods<Self>,
     {
+        methods.add_method("available_commands", |_lua, this, ()| {
+            let list = this
+                .list
+                .iter()
+                .map(|Help { command, .. }| command)
+                .map(Clone::clone)
+                .chain(
+                    AliasesDb::open(&this.aliases_db)
+                        .ok()
+                        .and_then(|db| db.list_all(false).ok())
+                        .unwrap_or_default(),
+                )
+                .chain(
+                    KvSqlStore::open(&this.commands_db)
+                        .ok()
+                        .and_then(|db| db.keys().ok())
+                        .unwrap_or_default(),
+                )
+                .collect::<Vec<_>>();
+
+            Ok(list)
+        });
+
         methods.add_method("list", |lua, this, ()| {
             lua.create_sequence_from(this.list.iter())
         });
@@ -53,7 +80,12 @@ impl mlua::UserData for HelpProvider {
 }
 
 impl HelpProvider {
-    pub fn build(commands: &[Mapping], lua: &mlua::Lua) -> mlua::Result<()> {
+    pub fn build(
+        commands: &[Mapping],
+        lua: &mlua::Lua,
+        aliases_db: impl Into<PathBuf>,
+        commands_db: impl Into<PathBuf>,
+    ) -> mlua::Result<()> {
         let list = commands
             .iter()
             .map(|mapping| Help {
@@ -66,6 +98,13 @@ impl HelpProvider {
             })
             .collect();
 
-        lua.globals().set("help", Self { list })
+        lua.globals().set(
+            "help",
+            Self {
+                list,
+                aliases_db: aliases_db.into(),
+                commands_db: commands_db.into(),
+            },
+        )
     }
 }

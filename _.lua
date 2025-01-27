@@ -194,10 +194,12 @@ help = {
     --- Gets a list of available commands
     ---@return Help[]
     list = function(self) end,
-
     --- Look up a command by its name
     ---@return Help
     lookup = function(self, name) end,
+    --- Get a list of all commands and aliases
+    ---@return string[]
+    available_commands = function(self) end,
 }
 
 ---@class TimeSpan A UTC timespan

@@ -32,6 +32,8 @@ impl Manifest {
         lua: &mlua::Lua,
         scripts_dir: impl AsRef<Path>,
         source: &str,
+        aliases_db: impl Into<PathBuf>,
+        commands_db: impl Into<PathBuf>,
     ) -> mlua::Result<Self> {
         let scripts = scripts_dir.as_ref();
 
@@ -46,13 +48,19 @@ impl Manifest {
             commands: vec![],
             listeners: vec![],
         };
-        if let Err(err) = this.load(lua, source) {
+        if let Err(err) = this.load(lua, source, aliases_db, commands_db) {
             log::warn!("{err}")
         }
         Ok(this)
     }
 
-    pub fn load(&mut self, lua: &mlua::Lua, data: &str) -> Result<(), Error> {
+    pub fn load(
+        &mut self,
+        lua: &mlua::Lua,
+        data: &str,
+        aliases_db: impl Into<PathBuf>,
+        commands_db: impl Into<PathBuf>,
+    ) -> Result<(), Error> {
         let loaded = lua
             .globals()
             .get::<mlua::Table>("package")?
@@ -199,7 +207,7 @@ impl Manifest {
             log::info!("{out}");
         }
 
-        HelpProvider::build(&self.commands, lua)?;
+        HelpProvider::build(&self.commands, lua, aliases_db, commands_db)?;
         Ok(())
     }
 

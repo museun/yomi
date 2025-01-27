@@ -75,12 +75,12 @@ macro_rules! include_sql {
 
 // this is basically a key=val[] store which can be used for a lot of things
 // like the commands stuff just needs to be key=val
-struct AliasesDb {
+pub struct AliasesDb {
     conn: rusqlite::Connection,
 }
 
 impl AliasesDb {
-    fn open(path: impl AsRef<Path>) -> Result<Self, DbError> {
+    pub fn open(path: impl AsRef<Path>) -> Result<Self, DbError> {
         static SCHEMA: &str = include_sql!("schema");
         let conn = rusqlite::Connection::open(path)
             .map_err(|err| DbError::CannotOpenDb(err.to_string()))?;
@@ -132,7 +132,7 @@ impl AliasesDb {
         Ok(n > 0)
     }
 
-    fn list_all(&self, aliases_only: bool) -> Result<Vec<String>, DbError> {
+    pub fn list_all(&self, aliases_only: bool) -> Result<Vec<String>, DbError> {
         static LIST: &str = include_sql!("list");
         static LIST_ALIASES: &str = include_sql!("list_aliases");
         if aliases_only {

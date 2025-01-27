@@ -5,59 +5,70 @@ local learn_rust = "you can find resources to learn rust here: https://rust-lang
 local subscribe = "there will never be a subscribe button for this stream"
 
 
+local function pattern(data)
+    local pattern = re.compile(data)
+    for _, value in ipairs(help:available_commands()) do
+        if pattern:is_match(value) then
+            log:warn(string.format("%s matched a command: %s", data, value))
+            return nil
+        end
+    end
+    return pattern
+end
+
 ---@type {[string|{command: string}]: Pattern[]}
 local answers = {
     [playlist]       = {
-        re.compile("(?i).*?playlist.*?(\\?)?$")
+        pattern("(?i).*?playlist.*?(\\?)?$")
     },
 
     [c("!editor")]   = {
-        re.compile("(?i)(ide|editor)\\?"),
-        re.compile("(?i)(what editor\\s*?(is (this|that))?)\\??"),
+        pattern("(?i)(ide|editor)\\?"),
+        pattern("(?i)(what editor\\s*?(is (this|that))?)\\??"),
     },
 
     [c("!song")]     = {
-        re.compile("(?i)song name\\??"),
-        re.compile("(?i)which song\\??"),
-        re.compile("(?i)what song is this|that\\??"),
+        pattern("(?i)song name\\??"),
+        pattern("(?i)which song\\??"),
+        pattern("(?i)what song is this|that\\??"),
     },
 
     [c("!theme")]    = {
-        re.compile("(i?)what theme.*?\\??"),
+        pattern("(i?)what theme.*?\\??"),
     },
 
     [c("!font")]     = {
-        re.compile("(i?)what font.*?\\??"),
+        pattern("(i?)what font.*?\\??"),
     },
 
     [c("!os")]       = {
-        re.compile("(?i)what os\\s*?((are you using)|(is this))?\\??")
+        pattern("(?i)what os\\s*?((are you using)|(is this))?\\??")
     },
 
     [learn_rust]     = {
-        re.compile("started with rust"),
-        re.compile("start with rust"),
-        re.compile("(?i)learn.*?rust")
+        pattern("started with rust"),
+        pattern("start with rust"),
+        pattern("(?i)learn.*?rust")
     },
 
     [c("!project")]  = {
-        re.compile("(?i)what are (u|you) building\\s?\\??"),
-        re.compile("(?i)what are you working on\\s?\\??"),
-        re.compile("(?i)what('s)? project(\\sis this)\\s??"),
-        re.compile("(?i)going on.*?today\\s?\\??"),
-        re.compile("(?i)what are you (making|doing)\\s?\\?"),
-        re.compile("(?i).*?project of today.*?"),
-        re.compile("(?i).*?random project\\s?\\?"),
-        re.compile("(?i)what('s)?.*?today\\s?\\?"),
+        pattern("(?i)what are (u|you) building\\s?\\??"),
+        pattern("(?i)what are you working on\\s?\\??"),
+        pattern("(?i)what('s)? project(\\sis this)\\s??"),
+        pattern("(?i)going on.*?today\\s?\\??"),
+        pattern("(?i)what are you (making|doing)\\s?\\?"),
+        pattern("(?i).*?project of today.*?"),
+        pattern("(?i).*?random project\\s?\\?"),
+        pattern("(?i)what('s)?.*?today\\s?\\?"),
     },
 
     [subscribe]      = {
-        re.compile("(?i)where is the sub(scribe)? button\\??"),
-        re.compile("(?i)how can I sub(scribe)?\\??"),
+        pattern("(?i)where is the sub(scribe)? button\\??"),
+        pattern("(?i)how can I sub(scribe)?\\??"),
     },
 
     [c("!settings")] = {
-        re.compile("(?i)(what|where are\\s?)?editor (settings|config.*?)\\??")
+        pattern("(?i)(what|where are\\s?)?editor (settings|config.*?)\\??")
     }
 }
 
@@ -65,7 +76,7 @@ local answers = {
 local function answer(msg)
     for response, patterns in pairs(answers) do
         for _, pattern in ipairs(patterns) do
-            if pattern:is_match(msg.data) then
+            if pattern and pattern:is_match(msg.data) then
                 if response.command ~= nil then
                     log:info(string.format("rerouting to %s", response.command))
                     bot:reroute_command(msg, response.command)

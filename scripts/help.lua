@@ -34,30 +34,8 @@ local function wrap(seq, w)
     return lines
 end
 
-local function map(list)
-    local out = {}
-    for i, c in ipairs(list) do
-        out[i] = c.command
-    end
-    return out
-end
-
 local function find_nearest(key)
-    local function merge()
-        local merged = {}
-
-        local a = map(help:list())
-        local b = store:keys("commands") or {}
-        local c = aliases:list(false) or {}
-
-        table.move(a, 1, #a, #merged + 1, merged)
-        table.move(b, 1, #b, #merged + 1, merged)
-        table.move(c, 1, #c, #merged + 1, merged)
-
-        return merged
-    end
-
-    local data = merge()
+    local data = help:available_commands()
     return fuzzy.closest(key, data, true)
 end
 
@@ -123,24 +101,18 @@ local function lookup_fuzzy(msg, key)
     if lookup(msg, value, { closest = true, value = key }) then
         return true
     end
+
     if lookup_command(msg, value, { closest = true, value = key }) then
         return true
     end
+
     return false
 end
 
 ---@type handler
 local function show_help(msg, args)
     if not args.command then
-        for _, line in pairs(wrap(map(help:list()))) do
-            msg:say(line)
-        end
-
-        for _, line in pairs(wrap(store:keys("commands") or {})) do
-            msg:say(line)
-        end
-
-        for _, line in pairs(wrap(aliases:list(false) or {})) do
+        for _, line in pairs(wrap(help:available_commands())) do
             msg:say(line)
         end
         return

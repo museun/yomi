@@ -26,7 +26,7 @@ pub mod crates;
 pub mod fuzzy;
 pub mod irc;
 
-pub use aliases::Aliases;
+pub use aliases::{Aliases, AliasesDb};
 pub use bot::Bot;
 pub use config::Config;
 pub use github::Client as GithubClient;
@@ -40,7 +40,7 @@ pub use rand::Rando;
 pub use re::Regexp;
 pub use responder::Responder;
 pub use spotify::{Client as SpotifyClient, SpotifyHistory};
-pub use store::Store;
+pub use store::{KvSqlStore, Store};
 pub use watcher::Watcher;
 
 use mlua::{IntoLua, IntoLuaMulti};

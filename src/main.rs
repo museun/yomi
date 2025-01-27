@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use yomi::{
     irc::{self, MessageClass},
     Aliases, Config, EmoteMap, GithubClient, GlobalItem, Globals, HelixClient, Manifest,
@@ -16,6 +18,8 @@ fn handle_fs_event(
     ev: Result<(), flume::RecvError>,
     manifest: &mut Manifest,
     lua: &mlua::Lua,
+    aliases_db: impl Into<PathBuf>,
+    commands_db: impl Into<PathBuf>,
 ) -> Next {
     if ev.is_err() {
         return Next::Quit;
@@ -36,7 +40,7 @@ fn handle_fs_event(
         std::thread::sleep(std::time::Duration::from_millis(10));
     };
 
-    if let Err(err) = manifest.load(lua, &data) {
+    if let Err(err) = manifest.load(lua, &data, aliases_db, commands_db) {
         log::error!("{err}");
     }
 
@@ -89,6 +93,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     SpotifyClient::listen_for_changes(&spotify, &spotify_history_db);
 
     let aliases_db = config.paths.data("aliases").with_extension("db");
+    let commands_db = config.paths.data("commands").with_extension("db");
 
     let (reroute_tx, reroute) = flume::unbounded();
 
@@ -110,17 +115,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .register(github)?
         .register(spotify)?
         .register(SpotifyHistory::new(spotify_history_db))?
-        .register(Aliases::new(aliases_db))?;
+        .register(Aliases::new(&aliases_db))?;
 
     let data = std::fs::read_to_string(config.paths.script("init"))?;
-    let mut manifest = Manifest::initialize(&lua, &config.paths.scripts, &data)?;
+    let mut manifest = Manifest::initialize(
+        &lua,
+        &config.paths.scripts,
+        &data,
+        &aliases_db,
+        &commands_db,
+    )?;
 
     let mut our_user = irc::User::default();
 
     loop {
         let next = flume::Selector::new()
-            .recv(watcher.next_event(), |ev| {
-                handle_fs_event(ev, &mut manifest, &lua)
+            .recv(watcher.next_event(), {
+                |ev| handle_fs_event(ev, &mut manifest, &lua, &aliases_db, &commands_db)
             })
             .recv(&events, handle_irc_event)
             .recv(&reroute, handle_reroute_event)
