@@ -59,7 +59,7 @@ impl HelpProvider {
             .map(|mapping| Help {
                 command: mapping.command.clone(),
                 usage: match &mapping.raw_pattern {
-                    Some(p) => format!("{} {p}", mapping.command,),
+                    Some(p) => format!("{} {p}", mapping.command),
                     None => mapping.command.clone(),
                 },
                 description: mapping.help.clone(),

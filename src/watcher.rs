@@ -40,20 +40,17 @@ impl Watcher {
         let mut last = SystemTime::now();
 
         loop {
-            let Some((elapsed, next)) = Self::last_modified(&path)
+            if let Some((elapsed, next)) = Self::last_modified(&path)
                 .and_then(|md| md.duration_since(last).ok().map(|e| (e, md)))
-            else {
-                // this waiting for a second is rather unfortunate.
-                std::thread::sleep(std::time::Duration::from_secs(1));
-                continue;
-            };
-
-            if elapsed >= Duration::from_millis(100) {
-                last = next;
-                if tx.send(()).is_err() {
-                    return;
+            {
+                if elapsed >= Duration::from_millis(100) {
+                    last = next;
+                    if tx.send(()).is_err() {
+                        return;
+                    }
                 }
             }
+            std::thread::sleep(std::time::Duration::from_secs(3));
         }
     }
 }

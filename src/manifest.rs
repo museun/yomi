@@ -60,7 +60,8 @@ impl Manifest {
 
         let modules = lua.globals().get::<mlua::Table>("_LOADED_MODULES")?;
         for (k, _) in modules.pairs::<String, mlua::Value>().flatten() {
-            loaded.set(k, mlua::Nil)?;
+            modules.set(&*k, false)?;
+            loaded.set(k, false)?;
         }
 
         _ = std::mem::take(&mut self.commands);

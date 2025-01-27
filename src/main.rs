@@ -4,6 +4,7 @@ use yomi::{
     SpotifyClient, SpotifyHistory, Watcher,
 };
 
+#[derive(Debug)]
 enum Next {
     Event(irc::Event),
     Route(irc::Message),
@@ -43,11 +44,11 @@ fn handle_fs_event(
 }
 
 fn handle_irc_event(ev: Result<irc::Event, flume::RecvError>) -> Next {
-    ev.map(Next::Event).unwrap_or(Next::Continue)
+    ev.map(Next::Event).unwrap_or(Next::Quit)
 }
 
-fn handle_reoute_event(ev: Result<irc::Message, flume::RecvError>) -> Next {
-    ev.map(Next::Route).unwrap_or(Next::Continue)
+fn handle_reroute_event(ev: Result<irc::Message, flume::RecvError>) -> Next {
+    ev.map(Next::Route).unwrap_or(Next::Quit)
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -122,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 handle_fs_event(ev, &mut manifest, &lua)
             })
             .recv(&events, handle_irc_event)
-            .recv(&reroute, handle_reoute_event)
+            .recv(&reroute, handle_reroute_event)
             .wait();
 
         let event = match next {

@@ -21,6 +21,7 @@ impl GlobalItem for LoadedModules {
             lua.globals()
                 .get::<mlua::Table>("_LOADED_MODULES")?
                 .set(&*name, true)?;
+
             require.call::<mlua::Value>(name)
         })?;
 
