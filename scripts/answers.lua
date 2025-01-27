@@ -65,7 +65,7 @@ local function create_answers()
             pattern("(?i)what are you working on\\s?\\??"),
             pattern("(?i)what('s)? project(\\sis this)\\s??"),
             pattern("(?i)going on.*?today\\s?\\??"),
-            pattern("(?i)what are (we|u|you) (making|doing)( today)?\\s?\\?"),
+            pattern("(?i)what are (we|u|you) (making|doing)(\\stoday)?\\s?\\??"),
             pattern("(?i).*?project of today.*?"),
             pattern("(?i).*?random project\\s?\\?"),
             pattern("(?i)what('s)?.*?today\\s?\\?"),
@@ -86,9 +86,7 @@ local answers = nil
 
 ---@param msg Message
 local function answer(msg)
-    if not answers then
-        answers = create_answers()
-    end
+    answers = answers or create_answers()
 
     for response, patterns in pairs(answers) do
         for _, pattern in ipairs(patterns) do
