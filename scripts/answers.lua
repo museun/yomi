@@ -21,6 +21,9 @@ local answers = {
     [re.compile("(?i)what font.*?\\?")] = {
         command = "!font",
     },
+    [re.compile("(?i)what theme( is this)?")] = {
+        command = "!theme"
+    },
     [re.compile("(?i)how can I (make|get) my (editor|vsc)\\?")] = {
         command = "!settings",
     },

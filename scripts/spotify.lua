@@ -50,6 +50,10 @@ local search = {
     help = "looks up a song by its title on spotify",
     handler = function(msg, args)
         if msg.channel_id ~= BOT_USER.user_id then
+            msg:reply(string.format(
+                "you must do that on my channel: https://www.twitch.tv/popout/%s/chat?popout=",
+                BOT_USER.name
+            ))
             return
         end
         local items, _ = spotify:search(table.concat(args.query, " "));
