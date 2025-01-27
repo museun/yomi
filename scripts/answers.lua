@@ -1,66 +1,79 @@
----@class response
----@field body string?
----@field command string?
+local function c(...) return { command = ... } end
 
----@type {[Pattern]: response}|{}
+local playlist = "museun don't use a playlist, they just pick a song and let spotify play from there"
+local learn_rust = "you can find resources to learn rust here: https://rust-lang.org/learn"
+local subscribe = "there will never be a subscribe button for this stream"
+
+
+---@type {[string|{command: string}]: Pattern[]}
 local answers = {
-    [re.compile("(?i).*?playlist.*?(\\?)?$")] = {
-        body = "museun don't use a playlist, they just pick a song and let spotify play from there",
+    [playlist]       = {
+        re.compile("(?i).*?playlist.*?(\\?)?$")
     },
-    [re.compile("(?i)((((editor|ide) is (this|.?*using).*?)|\z
-                (ide|editor))\\?)|\z
-                (what editor\\s*?(is (this|that))?)\\??")] = {
-        command = "!editor",
+
+    [c("!editor")]   = {
+        re.compile("(?i)(ide|editor)\\?"),
+        re.compile("(?i)(what editor\\s*?(is (this|that))?)\\??"),
     },
-    [re.compile("(?i)song(\\sname)?\\?")] = {
-        command = "!song",
+
+    [c("!song")]     = {
+        re.compile("(?i)song name\\??"),
+        re.compile("(?i)which song\\??"),
+        re.compile("(?i)what song is this|that\\??"),
     },
-    [re.compile("(?i)what theme.*?\\?")] = {
-        command = "!theme",
+
+    [c("!theme")]    = {
+        re.compile("(i?)what theme.*?\\??"),
     },
-    [re.compile("(?i)what font.*?\\?")] = {
-        command = "!font",
+
+    [c("!font")]     = {
+        re.compile("(i?)what font.*?\\??"),
     },
-    [re.compile("(?i)what theme( is this)?")] = {
-        command = "!theme"
+
+    [c("!os")]       = {
+        re.compile("(?i)what os\\s*?((are you using)|(is this))?\\??")
     },
-    [re.compile("(?i)how can I (make|get) my (editor|vsc)\\?")] = {
-        command = "!settings",
+
+    [learn_rust]     = {
+        re.compile("started with rust"),
+        re.compile("start with rust"),
+        re.compile("(?i)learn.*?rust")
     },
-    [re.compile("(?i)what os\\s*?((are you using)|(is this))?\\??")] = {
-        command = "!os",
+
+    [c("!project")]  = {
+        re.compile("(?i)what are (u|you) building\\s?\\??"),
+        re.compile("(?i)what are you working on\\s?\\??"),
+        re.compile("(?i)what('s)? project(\\sis this)\\s??"),
+        re.compile("(?i)going on.*?today\\s?\\??"),
+        re.compile("(?i)what are you (making|doing)\\s?\\?"),
+        re.compile("(?i).*?project of today.*?"),
+        re.compile("(?i).*?random project\\s?\\?"),
+        re.compile("(?i)what('s)?.*?today\\s?\\?"),
     },
-    [re.compile("(?i)what('?s)? is the extension for (vscode|vsc|visual studio)\\??")] = {
-        command = "!extension",
+
+    [subscribe]      = {
+        re.compile("(?i)where is the sub(scribe)? button\\??"),
+        re.compile("(?i)how can I sub(scribe)?\\??"),
     },
-    [re.compile("(?i)(learn.*?rust)|(get started in rust)|(start with rust)")] = {
-        body = "you can find resources to learn rust here: https://rust-lang.org/learn",
-    },
-    [re.compile("(?i)(what are (u|you) building\\s?\\??)|\z
-                 (what are you working on\\s?\\??)|\z
-                 (what('s)? project( is this)\\s??)|\z
-                 (going on.*?today)\\s?\\??|\z
-                 what are you (making|doing)\\s?\\?|\z
-                 .*?project of today.*?|\z
-                 .*?random project\\s?\\?|what('s)?(.*?)today\\s?\\?")] = {
-        command = "!project",
-    },
-    [re.compile("(?i)(where is the sub(scribe)? button\\??)|\z
-                (how can I sub\\??)|(subscribe\\??)")] = {
-        body = "there will never be a subscribe button for this stream",
-    },
+
+    [c("!settings")] = {
+        re.compile("(?i)(what|where are\\s?)?editor (settings|config.*?)\\??")
+    }
 }
 
 ---@param msg Message
 local function answer(msg)
-    for pattern, response in pairs(answers) do
-        if pattern:is_match(msg.data) then
-            if not response.body then
-                bot:reroute_command(msg, response.command)
-            else
-                msg:reply(response.body)
+    for response, patterns in pairs(answers) do
+        for _, pattern in ipairs(patterns) do
+            if pattern:is_match(msg.data) then
+                if response.command ~= nil then
+                    log:info(string.format("rerouting to %s", response.command))
+                    bot:reroute_command(msg, response.command)
+                elseif type(response) == "string" then
+                    msg:reply(response)
+                end
+                return Handled.sink
             end
-            break
         end
     end
 

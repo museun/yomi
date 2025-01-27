@@ -27,7 +27,6 @@ local function redirect(msg)
     head = head or msg.data
     tail = tail or ""
 
-    -- this needs to be a resolve
     local item, err = aliases:resolve(head);
     if item ~= nil then
         log:debug(string.format("redirecting %s to %s", head, item))
