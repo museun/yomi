@@ -1,8 +1,9 @@
-local max_width <const> = 100
+local max_width <const> = 50
 
----@param seq Help[]
+---@param seq string[]
+---@param each fun(string):nil
 ---@param w integer?
-local function wrap(seq, w)
+local function wrap(seq, each, w)
     local names = {}
     local width = w or max_width
 
@@ -31,7 +32,9 @@ local function wrap(seq, w)
         table.insert(lines, current)
     end
 
-    return lines
+    for _, line in pairs(lines) do
+        each(line)
+    end
 end
 
 local function find_nearest(key)
@@ -112,9 +115,9 @@ end
 ---@type handler
 local function show_help(msg, args)
     if not args.command then
-        for _, line in pairs(wrap(help:available_commands())) do
+        wrap(help:available_commands(true), function(line)
             msg:say(line)
-        end
+        end)
         return
     end
 

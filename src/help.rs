@@ -32,8 +32,8 @@ impl mlua::UserData for HelpProvider {
     where
         M: mlua::UserDataMethods<Self>,
     {
-        methods.add_method("available_commands", |_lua, this, ()| {
-            let list = this
+        methods.add_method("available_commands", |_lua, this, sort: Option<bool>| {
+            let mut list = this
                 .list
                 .iter()
                 .map(|Help { command, .. }| command)
@@ -51,6 +51,10 @@ impl mlua::UserData for HelpProvider {
                         .unwrap_or_default(),
                 )
                 .collect::<Vec<_>>();
+
+            if sort.unwrap_or(false) {
+                list.sort_unstable();
+            }
 
             Ok(list)
         });

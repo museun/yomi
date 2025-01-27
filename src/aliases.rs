@@ -43,7 +43,7 @@ impl UserData for Aliases {
 
         methods.add_method_mut("add", |_lua, this, (command, alias): (String, String)| {
             let mut aliases = AliasesDb::open(&this.0).map_err(mlua::Error::external)?;
-            aliases.add_alias(&command, &alias).into_lua_tuple()
+            aliases.add_alias(&alias, &command).into_lua_tuple()
         });
 
         methods.add_method("remove", |_lua, this, alias: String| {

@@ -65,11 +65,19 @@ local remove = {
     help = "remove a command",
     elevated = true,
     handler = function(msg, args)
+        if aliases:contains(args.name) then
+            aliases:remove(args.name)
+            msg:reply(string.format("removed alias %s", args.name))
+            return
+        end
+
         local removed = store:remove(ns, args.name)
         if not removed then
             msg:reply(string.format("command %s does not exist", args.name))
             return
         end
+
+        aliases:clear(args.name)
 
         msg:reply(string.format("removed %s", args.name))
     end
