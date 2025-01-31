@@ -11,7 +11,6 @@ local function pattern(data)
         return nil
     end
     if help == nil then
-        log:error("help is nil?")
         return nil
     end
     for _, value in ipairs(help:available_commands() or {}) do
@@ -39,7 +38,7 @@ local function create_answers()
         [c("!song")]     = {
             pattern("(?i)song name\\??"),
             pattern("(?i)which song\\??"),
-            pattern("(?i)what song is this|that\\??"),
+            pattern("(?i)what song is (this|that)\\??"),
         },
 
         [c("!theme")]    = {
@@ -77,7 +76,9 @@ local function create_answers()
         },
 
         [c("!settings")] = {
-            pattern("(?i)(what|where are\\s?)?editor (settings|config.*?)\\??")
+            pattern("(?i)where can [Ii] get your (settings|config)\\??"),
+            pattern("(?i)(what|where are\\s?)?editor (settings|config.*?)\\??"),
+            pattern("(?i)^.*?(vscode (settings|config)).*?$")
         }
     }
 end

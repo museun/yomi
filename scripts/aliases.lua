@@ -20,11 +20,9 @@ local alias = {
             return
         end
 
-
         local found = false
         for _, cmd in ipairs(help:available_commands()) do
-            if args.src == cmd
-            then
+            if args.src == cmd then
                 found = true
             end
         end

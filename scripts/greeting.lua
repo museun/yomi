@@ -14,7 +14,7 @@ end
 local function greet_user(msg)
     if contains(greetings, msg.data) then
         local greeting = rand:choose(greetings) or "hello"
-        msg:say(greeting);
+        msg:reply(greeting);
     end
     return Handled.bubble
 end

@@ -198,7 +198,7 @@ help = {
     ---@return Help
     lookup = function(self, name) end,
     --- Get a list of all commands and aliases
-    ---@param sort boolean should the commands be sorted?
+    ---@param sort boolean? should the commands be sorted?
     ---@return string[]
     available_commands = function(self, sort) end,
 }

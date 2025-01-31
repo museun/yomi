@@ -84,11 +84,11 @@ local remove = {
 }
 
 local function dispatch(msg)
-    local c, t = split(msg.data)
-    local body = store:get(ns, c) or nil
+    local command, target = split(msg.data)
+    local body = store:get(ns, command) or nil
     if body ~= nil then
-        if t ~= nil and t ~= "" then
-            msg:say(string.format("%s: %s", t, body))
+        if target ~= nil and target ~= "" then
+            msg:say(string.format("%s: %s", target, body))
         else
             msg:reply(body)
         end
