@@ -29,5 +29,22 @@ local greet = {
     end
 }
 
+---@type Command
+local greet_add = {
+    command = "!greeting",
+    args = "add <greeting>",
+    help = "adds a greeting the bot can use",
+    elevated = true,
+    handler = function(msg, args)
+        if contains(greetings, args.greeting) then
+            msg:reply("that greeting already exists")
+            return
+        end
+        greetings[#greetings + 1] = args.greeting
+        store:save("greetings", greetings)
+        msg:reply(string.format("added %s as a greeting", args.greeting))
+    end
+}
+
 ---@type Command[]
-return { greet, listeners = { greet_user } }
+return { greet, greet_add, listeners = { greet_user } }
