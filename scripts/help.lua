@@ -112,10 +112,12 @@ local function lookup_fuzzy(msg, key)
     return false
 end
 
+-- TODO this should only show commands for their priv. levels
 ---@type handler
 local function show_help(msg, args)
     if not args.command then
-        wrap(help:available_commands(true), function(line)
+        local commands = help:available_commands(true)
+        wrap(commands, function(line)
             msg:say(line)
         end)
         return
