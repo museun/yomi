@@ -39,13 +39,14 @@ fuzzy = {
 }
 
 ---@class Crate A crates.io crate
----@field name string           The name of the crate
----@field max_version string    The current version of the crate
----@field description string?   The description of the crate
----@field documentation string? The documentation link for the crate
----@field repository string?    The repository link for the crate
----@field exact_match boolean   Was the search an exact match?
----@field updated_at UtcTime    When the crate was last updated
+---@field name string            The name of the crate
+---@field default_version string The current version of the crate
+---@field yanked boolean         Was this crate yanked?
+---@field description string?    The description of the crate
+---@field documentation string?  The documentation link for the crate
+---@field repository string?     The repository link for the crate
+---@field exact_match boolean    Was the search an exact match?
+---@field updated_at UtcTime     When the crate was last updated
 Crate = {}
 
 crates = {

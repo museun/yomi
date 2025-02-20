@@ -4,7 +4,7 @@ local function lookup_crate(msg, args)
 
     if crate then
         msg:say(string.format("%s = %s | last updated %s",
-            crate.name, crate.max_version, crate.updated_at:elapsed():humanize(true)
+            crate.name, crate.default_version, crate.updated_at:elapsed():humanize(true)
         ))
 
         if crate.description ~= nil or crate.documentation ~= nil or crate.repository ~= nil then
@@ -14,6 +14,10 @@ local function lookup_crate(msg, args)
 
         if crate.exact_match ~= true then
             msg:say("(this isn't an exact match)")
+        end
+
+        if crate.yanked then
+            msg:say("(this version was yanked)")
         end
     else
         msg:reply(string.format("cannot find anything for %s", args.crate_name))
