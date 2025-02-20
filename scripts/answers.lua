@@ -41,6 +41,10 @@ local function create_answers()
             pattern("(?i)what song is (this|that)\\??"),
         },
 
+        [c("!previous")] = {
+            pattern("(?i)(what was )?the (previous|prior/last) song\\??")
+        },
+
         [c("!theme")]    = {
             pattern("(i?)what theme.*?\\??"),
         },
