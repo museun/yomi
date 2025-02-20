@@ -23,16 +23,13 @@ pub fn lookup_crate(name: &str) -> Option<Crate> {
         crates: Vec<Crate>,
     }
 
-    let resp = attohttpc::get("https://crates.io/api/v1/crates")
+    let mut resp: Resp = attohttpc::get("https://crates.io/api/v1/crates")
         .header("User-Agent", crate::USER_AGENT)
         .params([("page", "1"), ("per_page", "1"), ("q", name)])
         .send()
+        .ok()?
+        .json()
         .ok()?;
-
-    let value: serde_json::Value = resp.json().ok()?;
-    eprintln!("{value:#?}");
-
-    let mut resp: Resp = serde_json::from_value(value).ok()?;
 
     match resp.crates.len() {
         0 => None,
