@@ -46,7 +46,7 @@ local function create_answers()
         },
 
         [c("!theme")]    = {
-            pattern("(i?)what theme.*?\\??"),
+            pattern("(i?)what(\\syour)? theme.*?\\??"),
         },
 
         [c("!font")]     = {
