@@ -37,7 +37,7 @@ impl Client {
         Self {
             agent,
             oauth,
-            base: ep.into().map(Into::into),
+            base: ep.into(),
         }
     }
 

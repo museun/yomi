@@ -8,6 +8,12 @@ impl GlobalItem for Rando {
     const MODULE: &'static str = "rand";
 }
 
+impl Default for Rando {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Rando {
     pub fn new() -> Self {
         Self(fastrand::Rng::new())
