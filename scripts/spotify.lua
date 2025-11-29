@@ -14,6 +14,7 @@ end
 local song = {
     command = "!song",
     help = "tries to get the currently playing song from spotify",
+    requires_live = true,
     handler = function(msg, args)
         local current = spotify:current()
         if current ~= nil then
@@ -34,6 +35,7 @@ local song = {
 local next = {
     command = "!next",
     help = "tries to get the next song from spotify",
+    requires_live = true,
     handler = function(msg, args)
         local item = spotify:next()
         if item ~= nil then
@@ -78,6 +80,7 @@ local search = {
 local previous = {
     command = "!previous",
     help = "tries to get the previous song from spotify",
+    requires_live = true,
     handler = function(msg, args)
         local item, err = spotify_history:last()
         if err ~= nil then
@@ -100,6 +103,7 @@ local skip = {
     command = "!skip",
     help = "tries to skip the current song",
     elevated = true,
+    requires_live = true,
     handler = function(msg, args)
         spotify:skip()
     end
@@ -110,6 +114,7 @@ local request = {
     command = "!request",
     args = "<song>",
     help = "requests a song to be played on spotify",
+    requires_live = true,
     handler = function(msg, args)
         local song_request = store:load("spotify") or {}
         if not song_request.enabled then
@@ -181,6 +186,7 @@ local toggle = {
 local status = {
     command = "!spotify-state",
     help = "gets the song request mode state",
+    requires_live = true,
     handler = function(msg, args)
         local song_request = store:load("spotify") or {}
         local out

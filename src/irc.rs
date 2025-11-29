@@ -1,3 +1,4 @@
+use core::str;
 use std::{future::Future, time::Duration};
 
 use mlua::{AnyUserData, FromLua, IntoLua};
@@ -136,9 +137,15 @@ impl IntoLua for &Message {
             "say_on_main",
             lua.create_function({
                 let responder = responder.clone();
-                move |_lua, (_this, data): (Message, String)| {
-                    // FIXME get this from somewhere
-                    responder.reply_on_channel("museun".to_string(), data);
+                move |lua, (_this, data): (Message, String)| {
+                    let owner = lua
+                        .globals()
+                        .get::<AnyUserData>("BOT_OWNER")?
+                        .borrow::<Owner>()?
+                        .name
+                        .to_string();
+
+                    responder.reply_on_channel(owner, data);
                     Ok(())
                 }
             })?,
@@ -229,6 +236,46 @@ impl FromLua for Message {
             data: table.get("data")?,
             class: table.get("class")?,
         })
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Owner {
+    name: String,
+}
+
+impl Owner {
+    pub fn new(name: impl ToString) -> Self {
+        Self {
+            name: name.to_string(),
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+}
+
+impl GlobalItem for Owner {
+    const MODULE: &'static str = "BOT_OWNER";
+}
+
+impl FromLua for Owner {
+    fn from_lua(value: mlua::Value, _lua: &mlua::Lua) -> mlua::Result<Self> {
+        let table = value
+            .as_table()
+            .ok_or_else(|| mlua::Error::custom("Owner type was invalid"))?;
+
+        Ok(Self {
+            name: table.get("name")?,
+        })
+    }
+}
+
+impl IntoLua for Owner {
+    fn into_lua(self, lua: &mlua::Lua) -> mlua::Result<mlua::Value> {
+        lua.create_table_from([("name", &*self.name)])
+            .map(mlua::Value::Table)
     }
 }
 

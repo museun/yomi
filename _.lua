@@ -24,6 +24,10 @@ config = {
 ---@field user_id string The bot's user_id
 BOT_USER = {}
 
+---@class BOT_OWNER The bot's owner
+---@field name string The owners channel name
+BOT_OWNER = {}
+
 --- Tries to get a `key` from the env.
 ---@param key string
 ---@return string | nil
@@ -113,7 +117,7 @@ UserClass = {
 ---@field class      UserClass  The class of the user
 ---@field say fun(msg: Message, data: string): nil Send a message in response
 ---@field reply fun(msg: Message, data: string): nil Reply to user from a message
----@field say_on_main fun(data: String): nil Send a message to the main channel
+---@field say_on_main fun(msg: Message, data: string): nil Send a message to the main channel
 Message = {}
 
 ---@class Command         A command binding
@@ -121,6 +125,7 @@ Message = {}
 ---@field args string?    A pattern for matching this command
 ---@field help string     Help description for the command
 ---@field handler handler Callback for the command
+---@field requires_live boolean? Whether this command requires the main channel to be streaming
 ---@field elevated boolean? Whether this command requires moderator or higher status to use
 Command = {}
 
@@ -242,6 +247,9 @@ Stream = {}
 Emote = {}
 
 helix = {
+    ---@param name string The stream name to lookup
+    ---@@return boolean
+    is_stream_live =function(self, name) end,
     ---@param name string The stream name to lookup
     ---@return Stream
     get_stream = function(self, name) end,

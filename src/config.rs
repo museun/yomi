@@ -67,6 +67,9 @@ pub struct Twitch {
     pub name: String,
 
     #[serde(default)]
+    pub owner: String,
+
+    #[serde(default)]
     pub channels: Vec<String>,
 
     // TODO this should be called tmi_oauth

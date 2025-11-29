@@ -100,6 +100,12 @@ impl UserData for Client {
     where
         M: mlua::UserDataMethods<Self>,
     {
+        methods.add_method("is_stream_live", |lua, this, name: String| {
+            let name = name.strip_prefix('#').unwrap_or(&name);
+            let is_live = this.is_stream_live(name);
+            is_live.into_lua(lua)
+        });
+
         methods.add_method("get_stream", |lua, this, name: String| {
             let name = name.strip_prefix('#').unwrap_or(&name);
             let mut list = this.get_streams([name]).map_err(mlua::Error::external)?;

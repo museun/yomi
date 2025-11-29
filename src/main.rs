@@ -2,8 +2,8 @@ use std::path::PathBuf;
 
 use yomi::{
     irc::{self, MessageClass},
-    Aliases, Config, EmoteMap, GithubClient, GlobalItem, Globals, HelixClient, Manifest,
-    SpotifyClient, SpotifyHistory, Watcher,
+    Aliases, Config, EmoteMap, GithubClient, Globals, HelixClient, Manifest, SpotifyClient,
+    SpotifyHistory, Watcher,
 };
 
 #[derive(Debug)]
@@ -79,8 +79,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &config.twitch.client_id, //
         &config.twitch.client_secret,
     )?;
-    let emote_map = EmoteMap::fetch_emotes(&helix)?;
 
+    let emote_map = EmoteMap::fetch_emotes(&helix)?;
     let github = GithubClient::new(&config.github.oauth_token);
 
     let spotify = SpotifyClient::new(
@@ -97,8 +97,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (reroute_tx, reroute) = flume::unbounded();
 
+    log::info!("bot owner name: {}", config.twitch.owner);
+
     Globals::new(&lua)
         .register(&config)?
+        .register(yomi::irc::Owner::new(&config.twitch.owner))?
         .register(yomi::LoadedModules)?
         .register(yomi::Logger)?
         .register(yomi::Regexp)?
@@ -151,7 +154,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         match event {
             irc::Event::Connected { user } => {
                 our_user = user;
-                our_user.register(Globals::new(&lua))?;
+                Globals::new(&lua).register(&our_user)?;
 
                 for channel in &config.twitch.channels {
                     responder.send(irc::Response::Join {

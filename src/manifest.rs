@@ -126,10 +126,18 @@ impl Manifest {
                     table.get("command"),
                     table.get::<Option<String>>("args"),
                     table.get("help"),
+                    table.get("requires_live"),
                     table.get("elevated"),
                     table.get("handler"),
                 ) {
-                    (Ok(command), Ok(raw_pattern), Ok(help), Ok(elevated), Ok(handler)) => {
+                    (
+                        Ok(command),
+                        Ok(raw_pattern),
+                        Ok(help),
+                        Ok(requires_live),
+                        Ok(elevated),
+                        Ok(handler),
+                    ) => {
                         let pattern = match raw_pattern.as_deref().map(Pattern::parse) {
                             Some(Ok(pat)) => Some(pat),
                             Some(Err(err)) => {
@@ -144,6 +152,7 @@ impl Manifest {
                             pattern,
                             raw_pattern,
                             help,
+                            requires_live,
                             elevated,
                             handler,
                         };

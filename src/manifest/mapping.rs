@@ -1,8 +1,8 @@
 use crate::{
-    irc::Message,
+    irc::{Message, Owner},
     manifest::handled::Handled,
     pattern::{Extract, Pattern},
-    Responder,
+    HelixClient, Responder,
 };
 
 #[derive(Debug)]
@@ -12,6 +12,7 @@ pub struct Mapping {
     pub raw_pattern: Option<String>,
     pub help: String,
     pub elevated: bool,
+    pub requires_live: bool,
     pub handler: mlua::Function,
 }
 
@@ -51,6 +52,13 @@ impl Mapping {
             None => mlua::Value::Nil,
         };
 
+        if self.requires_live {
+            match check_liveness(lua, responder, msg) {
+                Ok(false) | Err(..) => return,
+                Ok(true) => {}
+            }
+        }
+
         // TODO PartialOrd so we can see if this message matches what they
         // specified as the minimum access level
         if self.elevated && !msg.is_elevated() {
@@ -79,4 +87,25 @@ impl Mapping {
             command = self.command
         )
     }
+}
+
+fn check_liveness(lua: &mlua::Lua, responder: &Responder, msg: &Message) -> mlua::Result<bool> {
+    let helix = lua
+        .globals()
+        .get::<mlua::AnyUserData>("helix")?
+        .borrow_mut::<HelixClient>()?;
+
+    let owner = lua.globals().get::<Owner>("BOT_OWNER")?;
+
+    if helix.is_stream_live(owner.name()) {
+        return Ok(true);
+    }
+
+    let data = format!(
+        "{} is not streaming, this command is disabled",
+        owner.name()
+    );
+    responder.reply(msg, data);
+    log::warn!("stream not live, cannot run command");
+    Ok(false)
 }

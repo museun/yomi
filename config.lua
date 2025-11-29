@@ -6,6 +6,7 @@ return {
     },
     twitch = {
         name = "shaken_bot",
+        owner = "museun",
         channels = { "#museun", "#shaken_bot" },
         helix_oauth = get_env("SHAKEN_TWITCH_OAUTH_TOKEN"),
         client_id = get_env("SHAKEN_TWITCH_CLIENT_ID"),
