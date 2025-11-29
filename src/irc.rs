@@ -272,7 +272,6 @@ pub fn connect(config: Twitch, response: flume::Receiver<Response>) -> flume::Re
     let _ = std::thread::spawn(move || {
         rt.block_on(async move {
             loop {
-                // std::future::pending::<()>().await;
                 match connect_to_twitch(config.clone(), &events, &response).await {
                     Next::Restart => continue,
                     Next::Stop => return,
