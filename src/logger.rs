@@ -16,7 +16,7 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("trace", |_lua, _this, value: mlua::Value| {
-            if let Some(str) = value.as_str() {
+            if let Ok(str) = value.to_string() {
                 log::trace!(target: "lua", "{str}");
             } else {
                 log::trace!(target: "lua", "{value:#?}");
@@ -29,7 +29,7 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("debug", |_lua, _this, value: mlua::Value| {
-            if let Some(str) = value.as_str() {
+            if let Ok(str) = value.to_string() {
                 log::debug!(target: "lua", "{str}");
             } else {
                 log::debug!(target: "lua", "{value:#?}");
@@ -42,7 +42,7 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("info", |_lua, _this, value: mlua::Value| {
-            if let Some(str) = value.as_str() {
+            if let Ok(str) = value.to_string() {
                 log::info!(target: "lua", "{str}");
             } else {
                 log::info!(target: "lua", "{value:#?}");
@@ -55,7 +55,7 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("warn", |_lua, _this, value: mlua::Value| {
-            if let Some(str) = value.as_str() {
+            if let Ok(str) = value.to_string() {
                 log::warn!(target: "lua", "{str}");
             } else {
                 log::warn!(target: "lua", "{value:#?}");
@@ -68,7 +68,7 @@ impl mlua::UserData for Logger {
             Ok(())
         });
         methods.add_method("error", |_lua, _this, value: mlua::Value| {
-            if let Some(str) = value.as_str() {
+            if let Ok(str) = value.to_string() {
                 log::error!(target: "lua", "{str}");
             } else {
                 log::error!(target: "lua", "{value:#?}");
