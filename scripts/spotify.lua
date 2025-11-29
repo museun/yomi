@@ -25,6 +25,11 @@ local song = {
         end
     end
 }
+
+-- add a !pos function that looks up the user id against the song queue (finding
+-- the first that matches) and then calculates how much time it'd be until that
+-- one (an esimate)
+
 ---@type Command
 local next = {
     command = "!next",
@@ -124,11 +129,22 @@ local request = {
             return
         end
 
-        msg:reply(string.format("queued: %s - %s @ %s",
-            join_artists(item),
-            item.name,
-            get_link(item)
-        ))
+        if msg.channel_id ~= BOT_USER.user_id then
+            msg:reply(
+                string.format("queued: %s - %s @ %s",
+                    join_artists(item),
+                    item.name,
+                    get_link(item)
+                )
+            )
+        else
+            msg:say_on_main(string.format("%s queued: %s - %s @ %s",
+                msg.sender,
+                join_artists(item),
+                item.name,
+                get_link(item)
+            ))
+        end
     end
 }
 

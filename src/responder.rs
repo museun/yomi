@@ -61,6 +61,11 @@ impl Responder {
             data,
         });
     }
+
+    pub fn reply_on_channel(&self, channel: String, data: String) {
+        self.send(Response::Say { channel, data });
+    }
+
     pub fn error(&self, msg: &Message, data: String) {
         self.send(Response::Error {
             channel: msg.channel.clone(),

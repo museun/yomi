@@ -1,7 +1,7 @@
 ---@type Command
 local alias = {
     command = "!alias",
-    args = "<src> to <dst>",
+    args = "<src> <dst>",
     help = "aliases a command to another name",
     elevated = true,
     handler = function(msg, args)
@@ -26,6 +26,8 @@ local alias = {
                 found = true
             end
         end
+
+        -- reject non commands with a prefix
 
         if found then
             aliases:add(args.dst, args.src)

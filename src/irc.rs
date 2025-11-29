@@ -133,6 +133,18 @@ impl IntoLua for &Message {
         table.set("_responder", AnyUserData::wrap(responder.clone()))?;
 
         table.set(
+            "say_on_main",
+            lua.create_function({
+                let responder = responder.clone();
+                move |_lua, (_this, data): (Message, String)| {
+                    // FIXME get this from somewhere
+                    responder.reply_on_channel("museun".to_string(), data);
+                    Ok(())
+                }
+            })?,
+        )?;
+
+        table.set(
             "reply",
             lua.create_function({
                 let responder = responder.clone();

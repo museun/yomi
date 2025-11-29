@@ -113,6 +113,7 @@ UserClass = {
 ---@field class      UserClass  The class of the user
 ---@field say fun(msg: Message, data: string): nil Send a message in response
 ---@field reply fun(msg: Message, data: string): nil Reply to user from a message
+---@field say_on_main fun(data: String): nil Send a message to the main channel
 Message = {}
 
 ---@class Command         A command binding

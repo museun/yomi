@@ -38,14 +38,17 @@ local function create_answers()
         [c("!song")]     = {
             pattern("(?i)song name\\??"),
             pattern("(?i)which song\\??"),
+            pattern("(?i)music name\\??"),
             pattern("(?i)what song is (this|that)\\??"),
         },
 
         [c("!previous")] = {
+            pattern("(?i)(last|prev.*?) song\\??"),
             pattern("(?i)(what was )?the (previous|prior/last) song\\??")
         },
 
         [c("!theme")]    = {
+            pattern("(i?)what is your theme.*?\\??"),
             pattern("(i?)what(\\syour)? theme.*?\\??"),
         },
 
@@ -60,7 +63,7 @@ local function create_answers()
         [learn_rust]     = {
             pattern("started with rust"),
             pattern("start with rust"),
-            pattern("(?i)learn.*?rust")
+            pattern("(?i)learn.*?\\srust")
         },
 
         [c("!project")]  = {
