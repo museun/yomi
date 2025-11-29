@@ -41,6 +41,13 @@ impl Client {
         }
     }
 
+    pub fn is_stream_live(&self, name: &str) -> bool {
+        let Ok(streams) = self.get_streams([name]) else {
+            return false;
+        };
+        !streams.is_empty()
+    }
+
     pub fn get_streams<const N: usize>(
         &self,
         names: [&str; N],
